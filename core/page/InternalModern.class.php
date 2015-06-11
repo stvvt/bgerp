@@ -70,7 +70,7 @@ class core_page_InternalModern extends core_page_Active
 
         // Ако сме в широк изглед извикваме функцията за мащабиране
         if(Mode::is('screenMode', 'wide')){
-        	$this->append("scaleViewport();", "START_SCRIPTS");
+        	//$this->append("scaleViewport();", "START_SCRIPTS");
         }
         
         // Опаковките и главното съдържание заемат екрана до долу
@@ -104,29 +104,25 @@ class core_page_InternalModern extends core_page_Active
      */
     static function getTemplate()
     {
-    	if (isset($_COOKIE['menuInformation'])) {
-    		$openMenuInfo = $_COOKIE['menuInformation'];
+        $openRightMenu = '';
+        $openLeftMenu = '';
+    	if (isset($_COOKIE['menuInfo'])) {
+    		$openMenuInfo = $_COOKIE['menuInfo'];
     		$mainContainerClass = '';
     		//в зависимост от стойсността на разбираме кои менюта са било отворени
     		if($openMenuInfo){
     			if(strrpos($openMenuInfo, "l") !== FALSE) {
-    				$openLeftBtn = ' menu-active ';
-    				$openLeftMenu = ' sidemenu-open ';
-    				$mainContainerClass .= ' sidemenu-push-toright ';
+    				$openLeftMenu = ' menu-active ';
     			}
     			if(strrpos($openMenuInfo, "r") !== FALSE) {
-    				$openRightBtn = ' menu-active ';
-    				$openRightMenu = ' sidemenu-open';
-    				$mainContainerClass .= ' sidemenu-push-toleft ';
+    				$openRightMenu = ' menu-active ';
     				$pin = ' hidden ';
-    			} else {
-    				$pinned = ' hidden ';
     			}
-    		} 
-    	} else {
-    			$pinned = ' hidden ';
+    		}
     	}
-    	
+        if($pin !== ' hidden ')  $pinned = ' hidden ';
+    	if(!$openRightMenu) $openRightMenu = ' nonVisible';
+        if(!$openLeftMenu) $openLeftMenu = ' nonVisible';
     	$menuImg = ht::createElement('img', array('src' => sbf('img/menu.png', ''), 'class' => 'menuIcon'));
     	$pinImg = ht::createElement('img', array('src' => sbf('img/pin.png', ''), 'class' => "menuIcon pin {$pin}"));
     	$pinnedImg = ht::createElement('img', array('src' => sbf('img/pinned.png', ''), 'class' => "menuIcon pinned {$pinned}"));
@@ -134,11 +130,11 @@ class core_page_InternalModern extends core_page_Active
     	
     	// Задаваме лейаута на страницата
     	$header = "<div style='position: relative'>
-	    					<a id='nav-panel-btn' href='#nav-panel' class='fleft btn-sidemenu btn-menu-left push-body {$openLeftBtn}'>". $menuImg ."</a>
+	    					<a id='nav-panel-btn' class='fleft btn-menu-left'>". $menuImg ."</a>
 	    					<span class='fleft logoText'>[#PORTAL#]</span>
 	    					<span class='notificationsCnt'>[#NOTIFICATIONS_CNT#]</span>
 	    					<span class='headerPath'>[#HEADER_PATH#]</span>
-	    					<a id='fav-panel-btn' href='#fav-panel' class='fright btn-sidemenu btn-menu-right push-body {$openRightBtn}'>". $pinImg . $pinnedImg . "</a>
+	    					<a id='fav-panel-btn' href='#fav-panel' class='fright btn-menu-right'>". $pinImg . $pinnedImg . "</a>
 	    					<span class='fright'>
 		    						<span class='user-options'>
 		    							" . $img .
@@ -156,14 +152,17 @@ class core_page_InternalModern extends core_page_Active
 	    				<div class='clearfix21'></div>
 	    				</div>  " ;
     	 
-    	$tpl = new ET("<div id='main-container' class='clearfix21 [#HAS_SCROLL_SUPPORT#] {$mainContainerClass}' style='top: 50px; position: relative'>" .
+    	$tpl = new ET("<table class='tableHolder'><tr>" .
+                "<td class='sidebars sidebar-left {$openLeftMenu}'><div class='relativeHolder'><div id='nav-panel' class='sidemenu sidemenu-left '>[#core_page_InternalModern::renderMenu#]</div></div></td>" .
+                "<td class='centerCell'><div class='relativeHolder'><div id='main-container' class='clearfix21 [#HAS_SCROLL_SUPPORT#] {$mainContainerClass}' style=' position: relative'>" .
     			"<div id=\"framecontentTop\"  class=\"headerBlock\"><div class='inner-framecontentTop'>" . $header . "</div></div>" .
-    			"<!--ET_BEGIN NAV_BAR--><div id=\"navBar\">[#NAV_BAR#]</div>\n<!--ET_END NAV_BAR--><div class='clearfix' style='min-height:9px;'></div>" .
+    			"<!--ET_BEGIN NAV_BAR--><div id=\"navBar\">[#NAV_BAR#]</div>\n<!--ET_END NAV_BAR-->" .
     			"<div id='statuses'>[#STATUSES#]</div>" .
     			"[#PAGE_CONTENT#]" .
-    			"[#DEBUG#]</div>".
-    			"<div id='nav-panel' class='sidemenu sidemenu-left {$openLeftMenu}'>[#core_page_InternalModern::renderMenu#]</div>".
-    			"<div id='fav-panel' class='sidemenu sidemenu-right {$openRightMenu}'><div class='inner-fav-panel'>[#core_page_InternalModern::renderBookmarks#]</div></div>"
+    			"<div class='debugHolder'>[#DEBUG#]</div></div></div></td>".
+    			"<td class='sidebars sidebar-right {$openRightMenu}'><div class='relativeHolder'><div id='fav-panel' class='sidemenu sidemenu-right'><div class='inner-fav-panel'>[#core_page_InternalModern::renderBookmarks#]</div></div></div></td>".
+
+    			"</tr></table>"
 
     	);
     	if(isDebug()) {
@@ -175,6 +174,8 @@ class core_page_InternalModern extends core_page_Active
     	
     	$tpl->append("runOnLoad( slidebars );", "JQRUN");
     	$tpl->append("runOnLoad( scrollToHash );", "JQRUN");
+
+        $tpl->append("stopScalingOnTouch();", "START_SCRIPTS");
     	
     	
         return $tpl;
@@ -326,7 +327,7 @@ class core_page_InternalModern extends core_page_Active
        		$mode = ht::createLink(tr("Десктоп"), array('logs_Browsers', 'setWideScreen', 'ret_url' => TRUE), NULL, array('ef_icon' => 'img/16/Monitor-icon.png', 'title' => 'Превключване на системата в десктоп режим'));
        	}
        	if(isDebug()) {
-       		$debug = ht::createLink("Debug", '#wer', FALSE, array('title' => "Показване на debug информация", 'ef_icon' => 'img/16/bug-icon.png', 'onclick' => 'toggleDisplay(\'debug_info\'); scrollToElem(\'debug_info\');'));
+       		$debug = ht::createLink("Debug", '#wer', FALSE, array('title' => "Показване на debug информация", 'ef_icon' => 'img/16/bug-icon.png', 'onclick' => 'openDebugInfo();'));
        	}
         // Смяна на езика
         $lgChange = self::getLgChange();
