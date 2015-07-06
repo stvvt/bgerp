@@ -50,7 +50,7 @@ class doc_Containers extends core_Manager
     /**
      * @todo Чака за документация...
      */
-    var $listItemsPerPage = 100;
+    var $listItemsPerPage = 1000;
     
     
     /**
@@ -69,6 +69,12 @@ class doc_Containers extends core_Manager
      * Масив с всички абревиатури и съответните им класове
      */
     static $abbrArr = NULL;
+    
+    
+    /**
+     * Име на променливата, където ще се запазват документите които да/не се показват
+     */
+    static $modShowName = 'showHiddenDocumentsArr';
     
     
     /**
@@ -103,10 +109,82 @@ class doc_Containers extends core_Manager
         
         $this->FLD('visibleForPartners', 'enum(no=Не, yes=Да)', 'caption=Видим за партньори');
         
+        $this->FLD('hide', 'enum(default, yes, no)', 'caption=Видим за партньори, notNull');
+        
         // Индекси за бързодействие
         $this->setDbIndex('folderId');
         $this->setDbIndex('threadId');
         $this->setDbUnique('docClass, docId');
+    }
+    
+    
+    /**
+     * Проверява кои документи ще се скриват и вдига съответния флаг
+     * 
+     * @param array $recs
+     */
+    public static function prepareDocsForHide(&$recs)
+    {
+        $conf = core_Packs::getConfig('doc');
+        
+        $cnt = count($recs);
+        
+        if (self::checkCntLimitForShow($cnt)) return ;
+        
+        // За да не промением подреждането на оригиналния запис
+        $cRecs = $recs;
+        
+        ksort($cRecs, SORT_NUMERIC);
+        
+        // Условия за скриване/показване
+        $begin = $conf->DOC_SHOW_DOCUMENTS_BEGIN;
+        $end = $cnt - $conf->DOC_SHOW_DOCUMENTS_BEGIN;
+        $from = dt::subtractSecs($conf->DOC_SHOW_DOCUMENTS_LAST_ON);
+        
+        $i = 0;
+        
+        $firstId = key($recs);
+        
+        foreach ($cRecs as $id => $rec) {
+            $i++;
+            
+            // Първия, да не се скрива
+            if ($id == $firstId) continue;
+            
+            // Ако е зададено да се показва в сесията
+            if ($rec->hide == 'no') {
+                $hide = FALSE;
+            } elseif ($rec->hide == 'yes') {
+                $hide = TRUE;
+            } else {
+                
+                $hide = TRUE;
+                
+                if ($rec->state != 'rejected') {
+                    
+                    // По новите от да не се показват
+                    if ($rec->modifiedOn > $from) {
+                        $hide = FALSE;
+                    }
+                    
+                    // Първите да не се скриват
+                    if ($begin >= $i) {
+                        $hide = FALSE;
+                    }
+                    
+                    // Последните да не се скриват
+                    if ($end < $i) {
+                        $hide = FALSE;
+                    }
+                }
+            }
+            
+            if ($hide) {
+                $recs[$id]->Hidden = TRUE;
+            } else {
+                $recs[$id]->Hidden = FALSE;
+            }
+        }
     }
     
     
@@ -219,15 +297,34 @@ class doc_Containers extends core_Manager
         }
 
         if($docRow) {
-            $data = $document->prepareDocument();
-            $row->ROW_ATTR['id'] = $document->getHandle();
-            $row->ROW_ATTR['onMouseUp'] = "saveSelectedTextToSession('" . $document->getHandle() . "', 'onlyHandle');";
-            $row->document = $document->renderDocument($data);
             
-            if($q = Request::get('Q')) {
-                $row->document = plg_Search::highlight($row->document, $q);
+            $q = Request::get('Q');
+            
+            // Ако е задеден да не се скрива документа или ако се търси в него
+            $hidden = (boolean) ($rec->Hidden && !isset($q));
+            
+            $row->ROW_ATTR['id'] = $document->getDocumentRowId();
+            
+            if (!$hidden) {
+                $data = $document->prepareDocument();
+                $row->ROW_ATTR['onMouseUp'] = "saveSelectedTextToSession('" . $document->getHandle() . "', 'onlyHandle');";
+                
+                // Добавяме линк за скриване на документа
+                if ($rec->Hidden === FALSE) {
+                    $hideLink = self::getLinkForHideDocument($document, $rec->id);
+                    $data->row->DocumentSettings = new ET($data->row->DocumentSettings);
+                    $data->row->DocumentSettings->append($hideLink);
+                }
+                
+                $row->document = $document->renderDocument($data);
+                
+                if($q) {
+                    $row->document = plg_Search::highlight($row->document, $q);
+                }
+            } else {
+                $row->document = self::renderHiddenDocument($rec->id);
             }
-
+            
             $row->created = str::limitLen($docRow->author, 32);
         } else {
             if(isDebug()) {
@@ -245,45 +342,71 @@ class doc_Containers extends core_Manager
             $row->document = new ET("<h2 style='color:red'>[#1#]</h2><p>[#2#]</p>", tr('Грешка при показването на документа'), $debug);
         }
         
-        if($docRow->authorId || $docRow->authorEmail) {
-            $avatar = avatar_Plugin::getImg($docRow->authorId, $docRow->authorEmail);
-        } else {
-            $avatar = avatar_Plugin::getImg($rec->createdBy, $docRow->authorEmail);
-        }
-
         $row->created = ucfirst($row->created);
         
         if ($rec->createdBy > 0) {
         	$row->created = crm_Profiles::createLink($rec->createdBy);
         }
-
-        if(Mode::is('screenMode', 'narrow')) {
-            $row->created = new ET("<div class='profile-summary'><div class='fleft'><div class='fleft'>[#2#]</div><div class='fleft'><span>[#3#]</span>[#1#]</div></div><div class='fleft'>[#HISTORY#]</div><div class='clearfix21'></div></div>",
-                $mvc->getVerbal($rec, 'createdOn'),
-                $avatar,
-                $row->created);
-                
-            // визуализиране на обобщена информация от лога
+        
+        if (!$hidden) {
+            
+            if($docRow->authorId || $docRow->authorEmail) {
+                $avatar = avatar_Plugin::getImg($docRow->authorId, $docRow->authorEmail);
+            } else {
+                $avatar = avatar_Plugin::getImg($rec->createdBy, $docRow->authorEmail);
+            }
+            
+            if(Mode::is('screenMode', 'narrow')) {
+                $row->created = new ET("<div class='profile-summary'><div class='fleft'><div class='fleft'>[#2#]</div><div class='fleft'><span>[#3#]</span>[#1#]</div></div><div class='fleft'>[#HISTORY#]</div><div class='clearfix21'></div></div>",
+                    $mvc->getVerbal($rec, 'createdOn'),
+                    $avatar,
+                    $row->created);
+                    
+                // визуализиране на обобщена информация от лога
+            } else {
+                $row->created = new ET("<table class='wide-profile-info'><tr><td><div class='name-box'>[#3#]</div>
+                                                    <div class='date-box'>[#1#]</div></td></tr>
+                                                    <tr><td class='gravatar-box'>[#2#]</td></tr><tr><td>[#HISTORY#]</td></tr></table>",
+                    $mvc->getVerbal($rec, 'createdOn'),
+                    $avatar,
+                    $row->created);
+                    
+                // визуализиране на обобщена информация от лога
+            }
+            
+            $row->created->append(doclog_Documents::getSummary($rec->id, $rec->threadId), 'HISTORY');
         } else {
-            $row->created = new ET("<table class='wide-profile-info'><tr><td><div class='name-box'>[#3#]</div>
-                                                <div class='date-box'>[#1#]</div></td></tr>
-                                                <tr><td class='gravatar-box'>[#2#]</td></tr><tr><td>[#HISTORY#]</td></tr></table>",
-                $mvc->getVerbal($rec, 'createdOn'),
-                $avatar,
-                $row->created);
-                
-            // визуализиране на обобщена информация от лога
+            
+            if (Mode::is('screenMode', 'narrow')) {
+                $nCreated = new ET("<div style='margin-bottom: 5px;'>
+                                        <span class='fleft'>[#nameBox#]</span>
+                                        <span class='fright'>[#dateBox#]</span>
+                                        <span class='clearfix21'></span>
+                                    </div>");
+            } else {
+                $nCreated = new ET("<table class='wide-profile-info'>
+                                		<tr>
+                                			<td><div class='name-box'>[#nameBox#]</div>
+                                                <div class='date-box'>[#dateBox#]</div>
+                                            </td>
+                                        </tr>
+                                	</table>");
+            }
+            
+            $nCreated->replace($row->created, 'nameBox');
+            $nCreated->replace($mvc->getVerbal($rec, 'createdOn'), 'dateBox');
+            
+            $row->created = $nCreated;
         }
         
-        $row->created->append(doclog_Documents::getSummary($rec->id, $rec->threadId), 'HISTORY');
 
-        if(Mode::is('screenMode', 'narrow')) {
+        if (Mode::is('screenMode', 'narrow')) {
             $row->document = new ET($row->document); 
             $row->document->prepend($row->created);
         }
     }
     
-
+    
     /**
      * При мобилен изглед оставяме само колонката "документ"
      */
@@ -420,7 +543,7 @@ class doc_Containers extends core_Manager
         }
         
         if($mustSave) {
-            //bp($rec, $updateField);
+            
             doc_Containers::save($rec, $updateField);
 
             // Ако този документ носи споделяния на нишката, добавяме ги в списъка с отношения
@@ -884,12 +1007,7 @@ class doc_Containers extends core_Manager
             return FALSE;
         }
         
-        //Проверяваме дали имаме права за single. Ако не - FALSE
-        if (!$mvc->haveRightFor('single', $docRec)) {
-            return FALSE;
-        }
-        
-        return static::getDocument((object)array('docClass'=>$mvc, 'docId'=>$docRec->id), $intf);
+        return static::getDocument((object)array('docClass' => $mvc, 'docId' => $docRec->id), $intf);
     }
     
     protected static function parseHandle($handle)
@@ -1335,12 +1453,18 @@ class doc_Containers extends core_Manager
         $query->orWhere("#threadId IS NULL");
         $query->orWhere("#docClass IS NULL");
         $query->orWhere("#docId IS NULL");
+        $query->orWhere("#visibleForPartners IS NULL");
+        $query->orWhere("#searchKeywords IS NULL");
+        $query->orWhere("#searchKeywords = ''");
+        
+        $query->orWhere("#activatedBy IS NULL AND #state != 'rejected' AND #state != 'draft'");
         
         $resArr = array();
         
         while($rec = $query->fetch()) {
             
             $docId = FALSE;
+            $mustUpdate = TRUE;
             
             // Ако няма id на папката
             if (!isset($rec->folderId)) {
@@ -1433,8 +1557,15 @@ class doc_Containers extends core_Manager
                 } else {
                     if (self::delete($rec->id)) {
                         $resArr['del_cnt']++;
+                        $mustUpdate = FALSE;
                     }
                 }
+            }
+            
+            // Обновяваме полетата
+            if ($mustUpdate) {
+                self::update($rec->id);
+                $resArr['updateContainers']++;
             }
         }
         
@@ -1480,6 +1611,7 @@ class doc_Containers extends core_Manager
                 
                 if (self::save($rec, 'state')) {
                     $resArr['state']++;
+                    self::update($rec->id);
                 }
             } catch (Exception $e) {
                 
@@ -2087,5 +2219,234 @@ class doc_Containers extends core_Manager
         $repArr['containers'] = doc_Containers::repair($from, $to, $conf->DOC_REPAIR_DELAY);
         
         return $repArr;
+    }
+    
+    
+    /**
+     * Преди извличане на записите от БД
+     *
+     * @param core_Mvc $mvc
+     * @param stdClass $res
+     * @param stdClass $data
+     */
+    public static function on_AfterPrepareListRecs($mvc, &$res, $data)
+    {
+        // Подготвяме документите, които да са скрити
+        self::prepareDocsForHide($data->recs);
+    }
+    
+    
+    /**
+     * Показва скрития документ
+     */
+    function act_ShowDocumentInThread()
+    {
+        $id = Request::get('id', 'int');
+        
+        $ajaxMode = (boolean) Request::get('ajax_mode');
+        
+        return self::showOrHideDocumentInThread($id, 'show', $ajaxMode);
+    }
+    
+    
+    /**
+     * Скрива показания документ
+     */
+    function act_HideDocumentInThread()
+    {
+        $id = Request::get('id', 'int');
+        
+        $ajaxMode = (boolean) Request::get('ajax_mode');
+        
+        return self::showOrHideDocumentInThread($id, 'hide', $ajaxMode);
+    }
+    
+    
+    /**
+     * Скрива/показва подадения документ
+     * 
+     * @param integer $id
+     * @param boolean $hide
+     * @param boolean $changeDef
+     */
+    public static function showOrHideDocument($id, $hide = FALSE, $changeDef = FALSE)
+    {
+        $rec = self::fetch($id);
+        
+        if ($changeDef) {
+            if (!$rec->hide || ($rec->hide == 'default')) {
+                
+                return ;
+            }
+        }
+        
+        if ($hide) {
+            $rec->hide = 'yes';
+        } else {
+            $rec->hide = 'no';
+        }
+        
+        self::save($rec, 'hide');
+    }
+    
+    
+    /**
+     * Функция, която се използва от екшъните за скриване/показване на документ
+     * 
+     * @param string $id
+     * @param string $act
+     * 
+     * @return object
+     */
+    protected static function showOrHideDocumentInThread($id, $act='show', $ajaxMode = FALSE)
+    {
+        $hideDoc = ($act == 'show') ? FALSE : TRUE;
+        $rec = self::fetch($id);
+        
+        expect($rec);
+        
+        $document = self::getDocument($id);
+        
+        if (!doc_Threads::haveRightFor('single', $rec->threadId)) {
+            
+            expect($document->haveRightFor('single'));
+        }
+        
+        self::showOrHideDocument($id, $hideDoc);
+        
+        if ($ajaxMode) {
+            
+            if ($hideDoc) {
+                $rec->Hidden = TRUE;
+            } else {
+                $rec->Hidden = FALSE;
+            }
+            
+            $row = self::recToVerbal($rec);
+            
+            $id = $document->getDocumentRowId();
+            
+            $html = '<td>' . $row->document . '</td>';
+            
+            if (Mode::is('screenMode', 'wide')) {
+                $html = '<td>' . $row->created . '</td>' . $html;
+            }
+            
+            $resObj = new stdClass();
+    		$resObj->func = "html";
+    		$resObj->arg = array('id' => $id, 'html' => $html, 'replace' => TRUE);
+            
+            $resStatus = array($resObj);
+            
+            // Добавя всички функции в масива, които ще се виката
+            $runAfterAjaxArr = $row->document->getArray('JQUERY_RUN_AFTER_AJAX');
+            if (is_array($runAfterAjaxArr) && count($runAfterAjaxArr)) {
+                
+                $runAfterAjaxArr = array_unique($runAfterAjaxArr);
+                foreach ((array)$runAfterAjaxArr as $runAfterAjax) {
+                    $resObjAjax = new stdClass();
+                    $resObjAjax->func = $runAfterAjax;
+                    
+                    $resStatus[] = $resObjAjax;
+                }
+            }
+    		
+    		return $resStatus;
+        } else {
+            
+            return new Redirect(array($document, 'single', $document->that, 'showOrHide' => $act));
+        }
+    }
+    
+    
+    /**
+     * Проверва дали има нужда да се скриват/показват документи
+     * 
+     * @param integer $cnt
+     * 
+     * @return integer
+     */
+    protected static function checkCntLimitForShow($cnt)
+    {
+        if ($cnt > 1) return FALSE;
+        
+        return TRUE;
+    }
+    
+    
+    /**
+     * Рендира съдържанието на скрит документ
+     * 
+     * @param core_ObjectReference $document
+     * @param integer $id
+     * 
+     * @return NULL|core_ET
+     */
+    protected static function getLinkForHideDocument($document, $id)
+    {
+        if ($document->haveRightFor('single') || doc_Threads::haveRightFor('single', $dRec->threadId)) {
+            $url = array(get_called_class(), 'HideDocumentInThread', $id);
+            
+            $attr = array();
+            $attr['ef_icon'] = 'img/16/toggle2.png';
+            $attr['class'] = 'settings-hide-document';
+            $attr['title'] = tr('Скриване на документа в нишката');
+            $attr['onclick'] = 'return startUrlFromDataAttr(this);';
+            $attr['data-url'] = toUrl($url, 'local');
+
+            $showDocument = ht::createLink('', $url, NULL, $attr);
+            
+            return $showDocument;
+        }
+    }
+    
+    
+    /**
+     * Рендира съдържанието на скрит документ
+     * 
+     * @param integer $id
+     * 
+     * @return core_ET
+     */
+    protected static function renderHiddenDocument($id)
+    {
+        $tpl = new ET("[#/doc/tpl/DocumentsSingleLayoutHeader.shtml#]
+        					<div>
+                            	<b>[#docTitle#]</b>
+                            </div>
+                        [#/doc/tpl/DocumentsSingleLayoutFooter.shtml#]");
+        
+        $document = self::getDocument($id);
+        $dRec = $document->rec();
+        $dRow = $document->getInstance()->recToVerbal($dRec, array('state', '-single'));
+        
+        $iconStyle = 'background-image:url(' . sbf($document->getIcon(), '"') . ');';
+        $tpl->replace($iconStyle, 'iconStyle');
+        
+        $docTitle = self::getDocTitle($id);
+        $tpl->replace($docTitle, 'docTitle');
+        
+        if ($document->haveRightFor('single') || doc_Threads::haveRightFor('single', $dRec->threadId)) {
+            $url = array(get_called_class(), 'ShowDocumentInThread', $id);
+            
+            $attr = array();
+            $attr['ef_icon'] = 'img/16/toggle-expand.png';
+            $attr['class'] = 'settings-show-document';
+            $attr['title'] = tr('Показване на целия документ');
+            $attr['onclick'] = 'return startUrlFromDataAttr(this);';
+            $attr['data-url'] = toUrl($url, 'local');
+
+            $showDocument = ht::createLink('', $url, NULL, $attr);
+            
+            $dRow->DocumentSettings = new ET($dRow->DocumentSettings);
+            $dRow->DocumentSettings->append($showDocument);
+        }
+        
+        $tpl->placeObject($dRow);
+        
+        $tpl->removeBlocks();
+        $tpl->removePlaces();
+        
+        return $tpl;
     }
 }

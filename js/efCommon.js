@@ -916,8 +916,21 @@ function js2php(obj, path, new_path) {
 function prepareContextMenu() {
     jQuery.each($('.more-btn'), function(i, val) {
         var el = $(this).parent().find('.modal-toolbar');
-        $(this).contextMenu('popup', el, {
-            'displayAround': 'trigger'
+        var position = el.attr('data-position');
+
+        if (!position || !( position == 'left' || position== 'top' || position == 'bottom')) {
+            position = 'auto'
+        }
+
+        var act = 'popup';
+        
+        if ($(this).hasClass('iw-mTrigger')) {
+        	act = 'update';
+        }
+        
+        $(this).contextMenu(act, el, {
+            'displayAround': 'trigger',
+            'position': position
         });
     });
 }
@@ -1016,6 +1029,8 @@ function changeLang(data){
 	$('.richEdit textarea').attr('spellcheck','true');
 	$('input[name=subject]').attr('lang',lang);
 	$('.richEdit textarea').attr('lang',lang);
+	
+	appendQuote(quoteId, quoteLine);
 }
 
 
@@ -1343,7 +1358,7 @@ function setMinHeightExt() {
  * Задава ширина на елементите от форма в зависимост от ширината на прозореца/устройството
  */
 function setFormElementsWidth() {
-    
+
 
     if ($('body').hasClass('narrow')){
     	var winWidth = parseInt($(window).width());
@@ -1357,7 +1372,9 @@ function setFormElementsWidth() {
     	var outsideWidth = 42;
     	if($('#all').length) {
     		outsideWidth = 30;
-    	}
+    	} else if ($('.modern-theme').length && $('.formTable input').length) {
+            outsideWidth = parseInt($('.formTable input').offset().left * 2  + 2);
+        }
         // изчислена максимална ширина формата
         var formElWidth = winWidth - outsideWidth;
 
@@ -1389,9 +1406,11 @@ function setFormElementsWidth() {
             $(this).attr('title', $(this).text());
         });
 
-        $('.formSection').css('width', formElWidth);
+        $('.staticFormView .formFieldValue').css('max-width', formElWidth - 5);
+
         $('.formTable textarea').css('width', formElWidth);
         $('.formTable .chzn-container').css('maxWidth', formElWidth);
+        $('.formTable .select2-container').css('maxWidth', formElWidth);
         $('.formTable select').css('maxWidth', formElWidth);
     } else {
     	 $('.formTable label').each(function() {
@@ -1530,11 +1549,34 @@ function getSelText() {
 
 
 /**
+ * Текста, който се цитира (след обработка)
+ */
+var quoteText;
+
+
+/**
+ * id на полето
+ */
+var quoteId;
+
+
+/**
+ * Реда, в който ще се замества
+ */
+var quoteLine;
+
+
+/**
  * Добавя в посоченото id на елемента, маркирания текст от сесията, като цитат, ако не е по стар от 5 секунди
  * 
  * @param id
+ * @param line
  */
-function appendQuote(id) {
+function appendQuote(id, line) {
+	
+	quoteId = id;
+	quoteLine = line;
+	
     // Ако не е дефиниран
     if (typeof sessionStorage === "undefined") return;
 
@@ -1546,31 +1588,41 @@ function appendQuote(id) {
 
     // Махаме 5s
     now = now - 5000;
-
-    // Ако не е по старо от 5s
-    if (selTime > now) {
-
+    
+    // Ако вече е нагласен или не е изтекъл
+	if ((!quoteText) && (selTime > now)) {
+		
         // Вземаме текста
         text = sessionStorage.getItem('selText');
-
+    	
         if (text) {
 
             // Вземаме манипулатора на документа
             selHandle = sessionStorage.getItem('selHandle');
 
             // Стринга, който ще добавим
-            str = "\n[bQuote";
+            quoteText = "\n[bQuote";
 
             // Ако има манипулато, го добавяме
             if (selHandle) {
-                str += "=" + selHandle + "]";
+            	quoteText += "=" + selHandle + "]";
             } else {
-                str += "]";
+            	quoteText += "]";
             }
-            str += text + "[/bQuote]";
-
-            // Добавяме към данните
-            get$(id).value += str;
+            quoteText += text + "[/bQuote]";
+        }
+	}
+    
+    if (quoteText) {
+        var textVal = get$(id).value;
+        
+        // Добавяме към данните
+        if (textVal && line) {
+        	var splited = textVal.split("\n");
+        	splited.splice(line, 0, quoteText);
+        	get$(id).value = splited.join("\n");
+        } else {
+        	get$(id).value += quoteText;
         }
     }
 }
@@ -2344,7 +2396,7 @@ efae.prototype.process = function(subscribedObj, otherData, async) {
                 func = thisEfaeInst.renderPrefix + func;
 
                 try {
-
+            		
                     // Извикваме функцията
                     window[func](arg);
                 } catch (err) {
@@ -2653,25 +2705,25 @@ function render_html(data) {
     var id = data.id;
     var html = data.html;
     var replace = data.replace;
-
+    
     // Ако няма HTML, да не се изпуълнява
     if ((typeof html == 'undefined') || !html) return;
-
+    
     // Ако има JQuery
     if (typeof jQuery != 'undefined') {
 
         var idObj = $('#' + id);
-
+        
         // Ако няма такъв таг
         if (!idObj.length) {
 
             // Задаваме грешката
             getEO().log('Липсва таг с id: ' + id);
         }
-
+		
         // Ако е зададено да се замества
         if ((typeof replace != 'undefined') && (replace)) {
-
+    		
             // Заместваме
             idObj.html(html);
         } else {
@@ -3605,6 +3657,45 @@ function mailServerSettings() {
 
 
 /**
+ * Вика url-то w data-url на линка и спира норматлноното му действие
+ * 
+ * @param event
+ * 
+ * @return boolean
+ */
+function startUrlFromDataAttr(obj)
+{
+	if (this.event) {
+		stopBtnDefault(this.event);
+	}
+		
+	resObj = new Object();
+	resObj['url'] = obj.getAttribute('data-url');
+	
+	getEfae().process(resObj);
+	
+	return false;
+}
+
+
+/**
+ * Спира нормалното дейстие на бутона след натискане
+ * 
+ * @param event
+ */
+function stopBtnDefault(event)
+{
+	if (event.preventDefault) {
+        event.preventDefault();
+    } else if (event.stopPropagation) {
+        event.stopPropagation();
+    } else {
+        event.returnValue = false;
+        event.cancelBubble = true;
+    }
+}
+
+/**
  * Прихващач за обновяването на страницата без AJAX
  */
 function onBeforeUnload()
@@ -3618,8 +3709,9 @@ function onBeforeUnload()
 /**
  * Добавя текущото URL И титлата към url-то
  */
-function addParamsToBookmarkBtn(parentUrl, localUrl)
+function addParamsToBookmarkBtn(obj, parentUrl, localUrl)
 {
+
 	//var url = encodeURIComponent(document.URL);
 	//var title = encodeURIComponent(document.title);
 	var url = localUrl;
@@ -3627,8 +3719,8 @@ function addParamsToBookmarkBtn(parentUrl, localUrl)
 		url = document.URL;
 	}
 	var title = document.title;
-	
-	document.location = parentUrl + '?url=' + url + '&title=' + title;
+
+    obj.setAttribute("href", parentUrl + '&url=' + url + '&title=' + title);
 }
 
 

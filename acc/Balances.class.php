@@ -160,13 +160,17 @@ class acc_Balances extends core_Master
     public static function on_AfterRecToVerbal($mvc, &$row, $rec, $fields = array())
     {
     	if(empty($rec->periodId)){
-    		$row->periodId = dt::mysql2verbal($rec->fromDate, 'd') . "-" . dt::mysql2verbal($rec->toDate, 'd F Y');
+    		$row->periodId = dt::mysql2verbal($rec->fromDate, 'd', NULL, FALSE) . "-" . dt::mysql2verbal($rec->toDate, 'd F Y', NULL, FALSE);
     		
     		if($fields['-list']){
     			if($mvc->haveRightFor('single', $rec)){
     				$row->periodId = ht::createLink($row->periodId, array($mvc, 'single', $rec->id), NULL, "ef_icon=img/16/table_sum.png, title = Оборотна ведомост {$row->periodId}");
     			}
     		}
+    	}
+    	
+    	if($rec->lastAlternation > $rec->lastCalculate){
+    		$row->lastAlternation = "<span class='red'>{$row->lastAlternation}</span>";
     	}
     }
     
@@ -182,7 +186,7 @@ class acc_Balances extends core_Master
             $data->row->accountId = 'Обобщена';
         }
         
-        $data->title = new ET('<span class="quiet">Оборотна ведомост</span> ' . $data->row->periodId);
+        $data->title = new ET("<span class='quiet'> " . tr('Оборотна ведомост') . "</span> " . $data->row->periodId);
     }
     
     
@@ -311,19 +315,20 @@ class acc_Balances extends core_Master
      */
     function calc($rec)
     {
-    	$recalcBalance = TRUE;
-    	$count = 1;
+    	//$recalcBalance = TRUE;
+    	//$count = 1;
         
-    	while($recalcBalance){
+    	// Вземаме инстанция на детайлите на баланса
+    	$bD = cls::get('acc_BalanceDetails');
+    	$bD->updatedBalances = array();
+    	
+    	//while($recalcBalance){
     		
-    		core_Debug::log("RECALC TRY {$count}");
+    		//$this->log("RECALC {$rec->id} TRY {$count}");
+    		//core_Debug::log("RECALC {$rec->id} TRY {$count}");
     		
     		// Зануляваме флага, за да не се преизчисли баланса отново
-    		Mode::setPermanent('recalcBalancesAgain', NULL);
-    		
-    		
-    		// Вземаме инстанция на детайлите на баланса
-    		$bD = cls::get('acc_BalanceDetails');
+    		$recalcBalance = FALSE;
     		
     		// Опитваме се да намерим и заредим последния баланс, който може да послужи за основа на този
     		$lastRec = $this->getBalanceBefore($rec->toDate);
@@ -342,7 +347,7 @@ class acc_Balances extends core_Master
     		}
     		
     		// Добавяме транзакциите за периода от първия ден, който не е обхваната от базовия баланс, до края на зададения период
-    		$bD->calcBalanceForPeriod($firstDay, $rec->toDate);
+    		$recalcBalance = $bD->calcBalanceForPeriod($firstDay, $rec->toDate);
     		
     		// Изтриваме всички детайли за дадения баланс
     		$bD->delete("#balanceId = {$rec->id}");
@@ -354,10 +359,8 @@ class acc_Balances extends core_Master
     		$rec->lastCalculate = dt::now();
     		self::save($rec);
     		
-    		// Проверяваме дали баланса трябва да се изчисли отново
-    		$recalcBalance = Mode::get('recalcBalancesAgain');
-    		$count++;
-    	}
+    		//$count++;
+    	//}
     }
     
     
@@ -632,5 +635,19 @@ class acc_Balances extends core_Master
         
         // Връщаме линка
         return $title;
+    }
+    
+    
+    /**
+     * Извиква се след подготовката на toolbar-а за табличния изглед
+     */
+    protected static function on_AfterPrepareListToolbar($mvc, &$data)
+    {
+    	if(haveRole('ceo,admin,debug')){
+    		$rec = core_Cron::getRecForSystemId('RecalcBalances');
+    		$url = array('core_Cron', 'ProcessRun', str::addHash($rec->id), 'forced' => 'yes');
+    		
+    		$data->toolbar->addBtn('Преизчисляване', $url, 'title=Преизчисляване на баланса,ef_icon=img/16/arrow_refresh.png,target=cronjob');
+    	}
     }
 }

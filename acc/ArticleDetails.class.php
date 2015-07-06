@@ -103,6 +103,12 @@ class acc_ArticleDetails extends doc_Detail
     
     
     /**
+     * Кои полета от листовия изглед да се скриват ако няма записи в тях
+     */
+    protected $hideListFieldsIfEmpty = 'reason';
+    
+    
+    /**
      * Описание на модела
      */
     function description()
@@ -138,13 +144,9 @@ class acc_ArticleDetails extends doc_Detail
         $rows = &$res->rows;
         $recs = &$res->recs;
         
-        $hasReasonFld = FALSE;
-        
         if (count($recs)) {
             foreach ($recs as $id=>$rec) {
                 $row = &$rows[$id];
-                
-                $hasReasonFld = !empty($rec->reason) ? TRUE : $hasReasonFld;
                 
                 foreach (array('debit', 'credit') as $type) {
                     $ents = "";
@@ -165,10 +167,6 @@ class acc_ArticleDetails extends doc_Detail
                     }
                 }
             }
-        }
-       
-        if($hasReasonFld === FALSE){
-        	unset($res->listFields['reason']);
         }
     }
     
@@ -460,13 +458,7 @@ class acc_ArticleDetails extends doc_Detail
     {
         foreach (array('debitEnt1', 'debitEnt2', 'debitEnt3', 'creditEnt1', 'creditEnt2', 'creditEnt3') as $fld){
             if(isset($rec->$fld)){
-                
-                // Кешираме името на перото
-                if(!isset(static::$cache['items'][$rec->$fld])){
-                    static::$cache['items'][$rec->$fld] = acc_Items::getVerbal($rec->$fld, 'titleLink');
-                }
-                
-                $row->$fld = static::$cache['items'][$rec->$fld];
+                $row->$fld = acc_Items::getVerbal($rec->$fld, 'titleLink');
             }
         }
         

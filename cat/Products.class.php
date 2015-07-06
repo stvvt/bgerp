@@ -93,6 +93,12 @@ class cat_Products extends core_Embedder {
     
     
     /**
+     * Кой  може да вижда счетоводните справки?
+     */
+    public $canAddacclimits = 'ceo,storeMaster,accMaster';
+    
+    
+    /**
      * Наименование на единичния обект
      */
     public $singleTitle = "Артикул";
@@ -309,7 +315,13 @@ class cat_Products extends core_Embedder {
     		
     		if(!$cover->haveInterface('doc_ContragentDataIntf')){
     			$form->setField('code', 'mandatory');
+    			if($cover->getInstance() instanceof cat_Categories){
+    				if($code = $cover->getDefaultProductCode()){
+    					$form->setDefault('code', $code);
+    				}
+    			}
     			
+    			// Запомняме последно добавения код
 				if($code = Mode::get('cat_LastProductCode')) {
 					if ($newCode = str::increment($code)) {
 						
@@ -429,7 +441,7 @@ class cat_Products extends core_Embedder {
 		$Driver = $this->getDriver($rec);
 		
 		$defMetas = $Driver->getDefaultMetas($defMetas);
-		$rec->meta = $this->getFieldType('meta')->fromVerbal($defMetas);
+		$rec->meta = ($rec->meta) ? $rec->meta : $this->getFieldType('meta')->fromVerbal($defMetas);
 	}
     
 	
@@ -803,6 +815,7 @@ class cat_Products extends core_Embedder {
 	    	2 => "csv_measureId", 
 	    	3 => "csv_groups",
     		4 => "csv_category",
+    		5 => "meta",
     	);
     	
     	core_Users::forceSystemUser();
@@ -844,7 +857,7 @@ class cat_Products extends core_Embedder {
     		$query->limit($limit);
     	}
     	
-    	$products = array();
+    	$private = $products = array();
     	$metaArr = arr::make($hasProperties);
     	$hasnotProperties = arr::make($hasnotProperties);
     	
@@ -865,7 +878,24 @@ class cat_Products extends core_Embedder {
     	
     	// Подготвяме опциите
     	while($rec = $query->fetch()){
-    		$products[$rec->id] = $this->getRecTitle($rec, FALSE);
+    		$title = $this->getRecTitle($rec, FALSE);
+    		
+    		if($rec->isPublic == 'yes'){
+    			$products[$rec->id] = $title;
+    		} else {
+    			$private[$rec->id] = $title;
+    		}
+    	}
+    	
+    	if(count($products)){
+    		$products = array('pu' => (object)array('group' => TRUE, 'title' => tr('Стандартни'))) + $products;
+    	}
+    	
+    	// Частните артикули излизат преди публичните
+    	if(count($private)){
+    		$private = array('pr' => (object)array('group' => TRUE, 'title' => tr('Нестандартни'))) + $private;
+    		
+    		$products = $private + $products;
     	}
     	
     	return $products;
@@ -1570,18 +1600,27 @@ class cat_Products extends core_Embedder {
     	// Показваме съдържанието на документа
     	$tpl = $this->getInlineDocumentBody($id, 'xhtml');
     	
-    	$tpl = $this->renderWrapping($tpl);
+    	// Ако е инсталиран пакета за партньори и потребителя е партньор
+    	// Слагаме за обвивка тази за партньорите
+    	if(core_Packs::isInstalled('colab')){
+    		if(core_Users::isContractor()){
+    			$this->load('colab_Wrapper');
+    			$this->currentTab = 'Нишка';
+    			
+    			$tpl = $this->renderWrapping($tpl);
+    		}
+    	}
     	
     	return $tpl;
     }
     
     
     /**
-     * Връща урл-то към еденичния изглед на обекта, ако потребителя има
+     * Връща урл-то към единичния изглед на обекта, ако потребителя има
      * права за сингъла. Ако няма права връща празен масив
      *
      * @param int $id - ид на запис
-     * @return array $url - масив с урл-то на еденичния изглед
+     * @return array $url - масив с урл-то на единичния изглед
      */
     public static function getSingleUrlArray($id)
     {
@@ -1589,7 +1628,7 @@ class cat_Products extends core_Embedder {
     	 
     	$url = array();
     	 
-    	// Ако потребителя има права за еденичния изглед, подготвяме линка
+    	// Ако потребителя има права за единичния изглед, подготвяме линка
     	if ($me->haveRightFor('single', $id)) {
     		$url = array($me, 'single', $id, 'ret_url' => TRUE);
     	} elseif($me->haveRightFor('privateSingle', $id)){

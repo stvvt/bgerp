@@ -147,8 +147,10 @@ class type_Richtext extends type_Blob
         // Ако е зададено да се аппендва маркирания текст, като цитата
         if ($this->params['appendQuote']) {
             
+            $line = is_numeric($this->params['appendQuote']) ? $this->params['appendQuote'] : 0;
+            
             // Добавяме функцията за апендване на цитата
-            $tpl->append("\n runOnLoad(function(){appendQuote('{$attr['id']}');});", 'SCRIPTS');
+            $tpl->append("\n runOnLoad(function(){appendQuote('{$attr['id']}', {$line});});", 'SCRIPTS');
         }
         
     	$tpl->append("\n runOnLoad(function(){hideRichtextEditGroups();});", 'SCRIPTS');
@@ -1234,7 +1236,7 @@ class type_Richtext extends type_Blob
         foreach($lines as $l) {
             if($l{0} == '|') {
                 if(!$table) {
-                    $out .= "\n<table class='inlineRichTable listTable'>";
+                    $out .= "\n<div class='overflow-scroll'><table class='inlineRichTable listTable'>";
                     $table = TRUE;
                 }
                 $l = trim($l, " \t");
@@ -1242,7 +1244,7 @@ class type_Richtext extends type_Blob
                 $out .= "<tr><td>" . str_replace('|', '</td><td>', $l) . "</td></tr>";
             } else {
                 if($table) {
-                    $out .= "</table>";
+                    $out .= "</table></div>";
                     $table = FALSE;
                 }
                 

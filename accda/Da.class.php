@@ -118,7 +118,7 @@ class accda_Da extends core_Master
     /**
      * Полета за показване в списъчния изглед
      */
-    public $listFields = 'tools=Пулт,valior,num,title,serial,createdOn,createdBy';
+    public $listFields = 'tools=Пулт,valior,handler=Документ,title,num,serial,createdOn,createdBy';
     
     
     /**
@@ -130,7 +130,7 @@ class accda_Da extends core_Master
     /**
      * Полето в което автоматично се показват иконките за редакция и изтриване на реда от таблицата
      */
-    public $rowToolsSingleField = 'title';
+    public $rowToolsSingleField = 'handler';
     
     
     /**
@@ -148,7 +148,7 @@ class accda_Da extends core_Master
         
         $this->FLD('info', 'text', 'caption=Описание,column=none,width=400px');
         $this->FLD('origin', 'text', 'caption=Произход,column=none,width=400px');
-        $this->FLD('location', 'key(mvc=crm_Locations, select=title)', 'caption=Локация,column=none,width=400px');
+        $this->FLD('location', 'key(mvc=crm_Locations, select=title,allowEmpty)', 'caption=Локация,column=none,width=400px');
         $this->FLD('amortNorm', 'percent', 'caption=ГАН,hint=Годишна амортизационна норма,notNull');
         
         $this->setDbUnique('num');
@@ -192,6 +192,15 @@ class accda_Da extends core_Master
     		}
     		
     		$form->setField('accountId', 'input,mandatory');
+    	}
+    	
+    	// Показваме само локациите на нашата фирма за ибзор
+    	$ownCompany = crm_Companies::fetchOurCompany();
+    	$ourLocations = crm_Locations::getContragentOptions('crm_Companies', $ownCompany->id);
+    	if(count($ourLocations)){
+    		$form->setOptions('location', array('' => '') + $ourLocations);
+    	} else {
+    		$form->setReadOnly('location');
     	}
     }
     
@@ -343,12 +352,21 @@ class accda_Da extends core_Master
      */
     public static function on_AfterGetClosedItemsInTransaction($mvc, &$res, $id)
     {
-    	$rec = $this->fetchRec($id);
+    	$rec = $mvc->fetchRec($id);
     
     	// От списъка с приключените пера, премахваме това на приключения документ, така че да може
     	// приключването да се оттегля/възстановява въпреки че има в нея приключено перо
-    	$itemId = acc_Items::fetchItem($this->getClassId(), $rec->id)->id;
+    	$itemId = acc_Items::fetchItem($mvc->getClassId(), $rec->id)->id;
     	
     	unset($res[$itemId]);
+    }
+    
+    
+    /**
+     * След преобразуване на записа в четим за хора вид
+     */
+    public static function on_AfterRecToVerbal($mvc, &$row, $rec)
+    {
+    	$row->handler = $mvc->getLink($rec->id, 0);
     }
 }

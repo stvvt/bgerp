@@ -53,7 +53,7 @@ class plg_TreeObject extends core_Plugin
 	 */
 	public static function on_AfterPrepareEditForm($mvc, &$data)
 	{
-		$options = self::getParentOptions($mvc, $data->form->rec);
+		$options = $mvc->prepareParentOptions($data->form->rec);
 		if(count($options)){
 			$data->form->setOptions($mvc->parentFieldName, $options);
 		} else {
@@ -65,34 +65,33 @@ class plg_TreeObject extends core_Plugin
 	
 	
 	/**
-	 * Връща възможните опции за избор на бащи
-	 * 
-	 * @param stdClass $rec
-	 * @return $options
+	 * Връща възможните опции за избор на бащи на обекта
 	 */
-	private static function getParentOptions($mvc, $rec)
+	public static function on_AfterPrepareParentOptions($mvc, &$res, $rec)
 	{
-		$where = '';
-		if($rec->id){
-			$where = "#id != {$rec->id}";
-		}
-		
-		if($mvc->getField('state', FALSE)){
-			$where .= (($where != '') ? " AND " : "") . " #state != 'rejected'";
-		}
-		
-		// При редакция оставяме само тези опции, в чиите бащи не участва текущия обект
-		$options = $mvc->makeArray4Select($mvc->nameField, $where);
-		if(count($options) && isset($rec->id)){
-			foreach ($options as $id => $title){
-				self::traverseTree($mvc, $id, $rec->id, $notAllowed);
-				if(count($notAllowed) && in_array($id, $notAllowed)){
-					unset($options[$id]);
+		if(!$res){
+			$where = '';
+			if($rec->id){
+				$where = "#id != {$rec->id}";
+			}
+			
+			if($mvc->getField('state', FALSE)){
+				$where .= (($where != '') ? " AND " : "") . " #state != 'rejected'";
+			}
+			
+			// При редакция оставяме само тези опции, в чиите бащи не участва текущия обект
+			$options = $mvc->makeArray4Select($mvc->nameField, $where);
+			if(count($options) && isset($rec->id)){
+				foreach ($options as $id => $title){
+					self::traverseTree($mvc, $id, $rec->id, $notAllowed);
+					if(count($notAllowed) && in_array($id, $notAllowed)){
+						unset($options[$id]);
+					}
 				}
 			}
+			
+			$res = $options;
 		}
-		
-		return $options;
 	}
 	
 	
@@ -241,7 +240,9 @@ class plg_TreeObject extends core_Plugin
         					// Сумираме стойността на полето за всеки наследник
         					if(count($descendents)){
         						foreach ($descendents as $dRec){
-        							$rec1->{$fld} += $dRec->{$fld};
+        							if(isset($dRec->{$fld})){
+        								$rec1->{$fld} += $dRec->{$fld};
+        							}
         						}
         					}
         				}
@@ -397,10 +398,10 @@ class plg_TreeObject extends core_Plugin
 				$rec = $mvc->fetch($id, "{$mvc->nameField},{$mvc->parentFieldName}");
 					
 				// Намираме името на обекта
-				$nameVerbal = $mvc->getVerbal($rec, $mvc->nameField);
+				$nameVerbal = type_Varchar::escape($rec->{$mvc->nameField});
 				$nameVerbal = strip_tags($nameVerbal);
 				$keyVerbal = $nameVerbal;
-					
+				
 				// Ако има баща и е указано децата му да са свойства
 				if(!empty($rec->{$mvc->parentFieldName})){
 					if($mvc->fetchField($rec->{$mvc->parentFieldName}, 'makeDescendantsFeatures') == 'yes'){
@@ -422,7 +423,7 @@ class plg_TreeObject extends core_Plugin
 		}
 	}
 	
-	
+	 
 	/**
 	 * След подготовката на навигацията по сраници
 	 */
@@ -453,10 +454,10 @@ class plg_TreeObject extends core_Plugin
 	public static function on_AfterGetVerbal($mvc, &$num, $rec, $part)
 	{
 		if($part == $mvc->nameField){
-			
-		    if (!$rec->id) return ;
+			$id = (is_object($rec)) ? $rec->id : $rec;
+		    if (!$id) return ;
 		    
-			$parent = $mvc->fetchField($rec->id, $mvc->parentFieldName);
+			$parent = $mvc->fetchField($id, $mvc->parentFieldName);
 			$title = $num;
 			
 			while($parent && ($pRec = $mvc->fetch($parent, "{$mvc->parentFieldName},{$mvc->nameField}"))) {

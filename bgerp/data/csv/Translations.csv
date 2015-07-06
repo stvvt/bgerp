@@ -150,7 +150,7 @@ en,ДА,LTA
 en,Данни,Data
 en,Дата,Date
 en,До,To
-en,Добавяне на запис,Add new record
+en,Добавяне на запис,Add a new record
 en,Документи,Documents
 en,Държава,Country
 en,Език,Language
@@ -206,7 +206,7 @@ en,Латиница,Latin
 en,Лице,Person
 en,Логистика,Logistic
 en,Логове,Logs
-en,Моля запознайт_181f,Please see attached invoice:
+en,Моля запознайт_181f,Please see the attached invoice:
 en,Мониторинг,Monitor
 en,Моята Фирма ООД,My Company Ltd
 en,На вниманието на,On attention of
@@ -254,7 +254,7 @@ en,Потребител,User
 en,Потребители,Users
 en,Превод на инте_d1efe,Interface translation
 en,Превод,Translation
-en,Предлагаме на _859ba,Please see attached quotation:
+en,Предлагаме на _859ba,Please see the attached quotation:
 en,Премахване,Remove
 en,Преместване,Move
 en,Прикачени файл_0fc7,Attached files
@@ -347,6 +347,7 @@ en,Какво?,What?
 en,часа,hours
 en,мин.,min
 en,час,hour
+en,Час,Hour
 en,и,and
 en,Периодични про_b38f,Scheduled tasks
 en,Описание,Description
@@ -392,10 +393,10 @@ en,Изтриване,Delete
 en,Наистина ли же_0a920,Do you really like to delete the document?
 en,Банкови сметки,Bank accounts
 en,Все още няма ба_4e42,No bank accounts yet
-en,Добавяне на но_b0da9,Add new bank account
+en,Добавяне на но_b0da9,Add a new bank account
 en,Локации,Locations
 en,Все още няма ло_238c,No locations yet
-en,Добавяне на но_972cc,Add new location
+en,Добавяне на но_972cc,Add a new location
 en,Фирми,Companies
 en,Лица,Persons
 en,Групи,Groups
@@ -468,7 +469,7 @@ en,Товарачи,Loaders
 en,Последна употр_c0e5,Last use
 en,Текущ,Current
 en,Лабораторни те_54ab,Laboratory tests
-en,Вид,Kind
+en,Вид,Type
 en,Партида,Batch
 en,Произход,Origin
 en,Възложител,Assignor
@@ -1642,7 +1643,7 @@ en,къде,where
 en,кой,who
 en,Дъски,Boards
 en,Постинги,Postings
-en,История на хитовете,The hits history
+en,История на хитовете,Hits history
 en,Рефериране,Reference
 en,Ресурси,Resources
 en,Ресурс,Resource
@@ -1731,7 +1732,9 @@ en,Моля запознайте се с нашето платежно наре�
 en,Моля запознайте се с нашия разходен банков документ,Please see our outgoing bank transfer
 en,Моля запознайте се с нашия приходен касов ордер,Please see our credit cash order
 en,Моля запознайте се с нашия разходен касов ордер,Please see our debit cash order
-en,Моля запознайте се с нашата,Please see our 
+en,Моля запознайте се с нашата,Please see our
+en,Моля запознайте се с нашия,Please see our
+en,Моля запознайте се с нашето,Please see our
 en,Моля запознайте се с,Please see
 en,покупка,purchase
 en,продажба,sale
@@ -1742,7 +1745,7 @@ en,приемателен протокол,acceptance protocol
 en,предавателен протокол,emitting protocol
 en,Моля запознайте се с нашата декларация за съответствие,Please see our declaration of compliance
 en,Моля запознайте се с препратения имейл,Please see forwarded email
-en,Моля запознайте се с нашия авансов отчет,Please see advance report
+en,Моля запознайте се с нашия авансов отчет,Please see our advance report
 en,Моля запознайте се с нашия документ,Please see our document
 en,Моля запознайте се с нашия ценоразпис,Please see our price list
 en,Моля запознайте се с нашата оферта,Please see our quotations
@@ -1830,7 +1833,7 @@ en,Отделно,Separately
 en,Без начисление,Without charge
 en,Показване,Display
 en,Забележки,Notice
-en,Автоматично,Аutomatically
+en,Автоматично,Аutomatic
 en,Разширено,Еxtensively
 en,Кратко,Short
 en,брой,piece
@@ -1839,7 +1842,7 @@ en,Продаваем,Marketable
 en,Купуваем,Purchase
 en,Складируем,Storage
 en,Вложим,Invest
-en,Дълготраен актив,Fix asset
+en,Дълготраен актив,Fixed asset
 en,Производим,Produce
 en,кг,kg
 en,т,t
@@ -1871,11 +1874,11 @@ en,J,J
 en,g/cm3,g/cm3
 en,kg/L,kg/l
 en,На момента,Cash on Delivery
-en,50% авансово и 50% преди експедиция,50%DP + 50%BS
-en,30% авансово и 70% преди експедиция,30%DP + 70%BS
-en,20% авансово и 80% преди експедиция,20%DP + 80%BS
-en,100% авансово,100% DP
-en,100% преди експедиция,100% BS
+en,50% авансово и 50% преди експедиция,50% downpayment and 50% before shipment
+en,30% авансово и 70% преди експедиция,30% downpayment and 70% before shipment
+en,20% авансово и 80% преди експедиция,20% downpayment and 80% before shipment
+en,100% авансово,100% downpayment
+en,100% преди експедиция,100% before shipment
 en,До 3 дни след фактуриране,Until 3 days after invoicing
 en,До 7 дни след фактуриране,Until 7 days after invoicing
 en,До 10 дни след фактуриране,Until 10 days after invoicing
@@ -1954,11 +1957,7 @@ en,Копие до,Copy to
 en,"Логнете се, за да видите нишката",Login to see the thread
 en,ще го пазим поверително,will keep it confidential
 bg,Headquarter,Главен офис
-bg,ceo,собственик
-bg,manager,управител
-bg,officer,служител
-bg,executive,изпълнител
-bg,contractor,партньор
+bg,contractor,Партньор
 en,Бюлетин,Bulletin
 en,Абонирани,Subscribed
 en,Последен,Last
@@ -1966,3 +1965,9 @@ en,Абонаменти,Subscriptions
 en,Бюлетини,Bulletins
 en,Абонати за бюлетин,Subscribers
 en,Браузър,Browser
+en,Търсене на документи,Search documents
+en,Търсене на папки,Search folders
+en,Търсене на фирми,Search companies
+en,Търсене на лица,Search persons
+en,Фамилия,Last name
+en,Отметки,Bookmarks

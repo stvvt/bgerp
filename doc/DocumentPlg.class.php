@@ -241,6 +241,21 @@ class doc_DocumentPlg extends core_Plugin
                 "class=btnAll,ef_icon=img/16/application_view_list.png, order=18, row={$mvc->allBtnToolbarRow}, title=" . tr('Всички ' . mb_strtolower($mvc->title)));    
 
         }
+        
+        // TODO ще е по друг начин
+        if ($mvc->haveRightFor('single', $data->rec->id) || doc_Threads::haveRightFor('single', $data->rec->threadId)) {
+            $threadRec = doc_Threads::fetch($data->rec->threadId);
+            
+            // Първия документ в нишката да не може да се скрива ръчно
+            if ($data->rec->containerId != $threadRec->firstContainerId) {
+                $data->toolbar->addBtn('Скриване', array(
+                    			'doc_Containers',
+                    			'hideDocumentInThread',
+                                $data->rec->containerId
+                    	),
+                    			'order=39, row=2', 'ef_icon = img/16/toggle2.png, title=Скриване на документа в нишката');
+            }
+        }
     }
     
     
@@ -301,7 +316,7 @@ class doc_DocumentPlg extends core_Plugin
             }
 
             if($rec->state == 'rejected') {
-                $tpl = new ET(tr(' от [#user#] на [#date#]')); 
+                $tpl = new ET(tr('|* |от|* [#user#] |на|* [#date#]')); 
                 $row->state .= $tpl->placeArray(array('user' => crm_Profiles::createLink($rec->modifiedBy), 'date' => dt::mysql2Verbal($rec->modifiedOn)));
             }
         }
@@ -529,6 +544,21 @@ class doc_DocumentPlg extends core_Plugin
     }
     
     
+    
+    /**
+     * Ескейпва хендъла и връща стринг, който ще се използва за id на ROW в нишките
+     * 
+     * @param core_Master $mvc
+     * @param string $res
+     * @param integer $id
+     */
+    function on_AfterGetDocumentRowId($mvc, &$res, $id)
+    {
+        $handle = $mvc->getHandle($id);
+        $res = preg_replace('/\!/i', '_', $handle);
+    }
+    
+    
     /**
      * Смяна статута на 'rejected'
      *
@@ -546,11 +576,25 @@ class doc_DocumentPlg extends core_Plugin
             $url = array($mvc, 'single', 'id' => $id);
             bgerp_Notifications::clear($url);
             
+            $hnd = $mvc->getDocumentRowId($rec->id);
+            
             if($rec->threadId) {
                 if(doc_Threads::haveRightFor('single', $rec->threadId)) {
                     
-                    $hnd = $mvc->getHandle($rec->id);
-                    $url = array('doc_Containers', 'list', 'threadId' => $rec->threadId, 'docId' => $hnd, 'Q' => Request::get('Q'), 'Cid' => Request::get('Cid'), '#' => $hnd);
+                    // Ако в момента не се скрива или показва - показва документа
+                    if (!Request::get('showOrHide')) {
+                        doc_Containers::showOrHideDocument($rec->containerId, FALSE, TRUE);
+                    }
+                    
+                    $handle = $mvc->getHandle($rec->id);
+                    
+                    $url = array('doc_Containers', 'list', 'threadId' => $rec->threadId, 'docId' => $handle, 'Cid' => Request::get('Cid'), '#' => $hnd);
+                    
+                    $Q = Request::get('Q');
+                    
+                    if (trim($Q)) {
+                        $url['Q'] = $Q;
+                    }
                     
                     // Ако има подаден таб
                     if ($tab = Request::get('Tab')) {
@@ -597,7 +641,6 @@ class doc_DocumentPlg extends core_Plugin
                 		
                 		// Редиректваме към нишката на документа
                 		if(colab_Threads::haveRightFor('single', $threadRec)){
-                			$hnd = $mvc->getHandle($rec->id);
                 			
                 			// Променяме урл-то да сочи към документа във видимата нишка
                 			$url = array('colab_Threads', 'single', 'threadId' => $rec->threadId, '#' => $hnd);
@@ -1274,7 +1317,14 @@ class doc_DocumentPlg extends core_Plugin
             } elseif(($action == 'edit') && ($oRec->state != 'draft')) {
             	if(!($oRec->state == 'active' && $mvc->canEditActivated === TRUE)){
             		$requiredRoles = 'no_one';
+            	} else {
+            		// Ако потребителя няма достъп до сингъла, той не може и да редактира записа
+            		$haveRightForSingle = $mvc->haveRightFor('single', $rec->id, $userId);
+            		if(!$haveRightForSingle){
+            			$requiredRoles = 'no_one';
+            		}
             	}
+            	
             } elseif(($action == 'edit')) {
             	
             	// Ако потребителя няма достъп до сингъла, той не може и да редактира записа
@@ -1465,6 +1515,7 @@ class doc_DocumentPlg extends core_Plugin
         
 //        if($data->threadCachedView === FALSE) {
             $tpl = $mvc->renderSingle($data);
+            
             if ($data->rec->_resending) {
                 $tpl->append(tr($data->rec->_resending), '_resending');    
             }

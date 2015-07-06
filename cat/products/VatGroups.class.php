@@ -71,8 +71,8 @@ class cat_products_VatGroups extends core_Detail
      */
     function description()
     {
-        $this->FLD('productId', 'key(mvc=cat_Products,select=name)', 'input=hidden,silent');
-        $this->FLD('vatGroup', 'key(mvc=acc_VatGroups,select=title)', 'caption=Група');
+        $this->FLD('productId', 'key(mvc=cat_Products,select=name)', 'input=hidden,silent,mandatory');
+        $this->FLD('vatGroup', 'key(mvc=acc_VatGroups,select=title,allowEmpty)', 'caption=Група,mandatory');
         $this->FLD('validFrom', 'datetime', 'caption=В сила oт');
     }
 
@@ -180,7 +180,7 @@ class cat_products_VatGroups extends core_Detail
         }
         
         if(static::haveRightFor('add', (object)array('productId' => $data->masterId))){
-        	$data->addUrl = array(get_called_class(), 'add', 'productId' => $data->masterId, 'ret_url' => TRUE);
+        	$data->addUrl = array(get_called_class(), 'add', 'productId' => $data->masterId, 'ret_url' => array('cat_products', 'single', $data->masterId));
         }
     }
     

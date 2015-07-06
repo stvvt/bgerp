@@ -46,6 +46,7 @@ class deals_Setup extends core_ProtoSetup
      */
     var $managers = array(
             'deals_OpenDeals',
+    		'migrate::updateOpenDeals2'
         );
 
     
@@ -58,5 +59,35 @@ class deals_Setup extends core_ProtoSetup
         $res .= bgerp_Menu::remove($this);
         
         return $res;
+    }
+    
+    
+    /**
+     * Ъпдейт на вече отворените сделки
+     */
+    function updateOpenDeals2()
+    {
+    	if(!deals_OpenDeals::count()){
+    		return;
+    	}
+    	
+    	core_App::setTimeLimit(800);
+    	 
+    	$query = deals_OpenDeals::getQuery();
+    	$query->where("#state = 'active'");
+    	$query->where("#amountDelivered IS NULL");
+    	
+    	while($rec = $query->fetch()){
+    		if(cls::load($rec->docClass, TRUE)){
+    			$Class = cls::get($rec->docClass);
+    			
+    			try{
+    				$dRec = $Class->fetch($rec->docId);
+    				deals_OpenDeals::saveRec($dRec, $Class);
+    			} catch(core_exception_Expect $e){
+    				core_Logs::log("Грешка при обновяване на чакаща сделка|* {$e->getMessage()}");
+    			}
+    		}
+    	}
     }
 }

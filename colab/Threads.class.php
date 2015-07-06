@@ -66,10 +66,23 @@ class colab_Threads extends core_Manager
 	
 	
 	/**
+	 * След дефиниране на полетата на модела
+	 *
+	 * @param core_Mvc $mvc
+	 */
+	public static function on_AfterDescription(core_Mvc $mvc)
+	{
+		// Задаваме за полета на проксито, полетата на оригинала
+		$mvc->fields = cls::get('doc_Threads')->selectFields();
+	}
+	
+	
+	/**
 	 * Извиква се преди изпълняването на екшън
 	 */
 	public static function on_BeforeAction($mvc, &$res, $action)
 	{
+		
 		// Изискваме да е логнат потребител
 		requireRole('user');
 	}
@@ -86,7 +99,7 @@ class colab_Threads extends core_Manager
 	
 	
 	/**
-	 * Подготвя достъпа до еденичния изглед на една споделена нишка към контрактор
+	 * Подготвя достъпа до единичния изглед на една споделена нишка към контрактор
 	 */
 	function act_Single()
 	{
@@ -114,6 +127,10 @@ class colab_Threads extends core_Manager
 		
 		$this->prepareTitle($data);
 		
+		if (!isset($data->recs)) {
+		    $data->recs = array();
+		}
+		
 		// Извличаме записите
 		while ($rec = $data->query->fetch()) {
 			$data->recs[$rec->id] = $rec;
@@ -121,6 +138,7 @@ class colab_Threads extends core_Manager
 		
 		// Вербализираме записите
 		if(count($data->recs)) {
+		    doc_Containers::prepareDocsForHide($data->recs);
 			foreach($data->recs as $id => $rec) {
 				$data->rows[$id] = $this->Containers->recToVerbal($rec, arr::combine($data->listFields, '-list'));
 			}
@@ -201,7 +219,7 @@ class colab_Threads extends core_Manager
 		parent::prepareListFilter_($data);
 		
 		$data->listFilter->FNC('search', 'varchar', 'caption=Ключови думи,input,silent,recently');
-		$data->listFilter->FNC('folderId', 'key(mvc=doc_Folders)', 'input=hidden,silent');
+		$data->listFilter->setField('folderId', 'input=hidden,silent');
 		$data->listFilter->FNC('order', 'enum(open=Първо отворените, recent=По последно, create=По създаване, numdocs=По брой документи)',
 				'allowEmpty,caption=Подредба,input,silent,refreshForm');
 		$data->listFilter->FNC('documentClassId', "class(interface=doc_DocumentIntf,select=title,allowEmpty)", 'caption=Вид документ,input,recently');

@@ -176,6 +176,7 @@ class acc_AllocatedExpenses extends core_Master
     	
     	$chargeVat = $firstDoc->fetchField('chargeVat');
     	$row->realAmount = $row->amount;
+    	
     	if($chargeVat == 'yes' || $chargeVat == 'separate'){
     		$amount = $rec->amount * (1 + acc_Periods::fetchByDate($rec->valior)->vatRate);
     		$row->amount = $mvc->getFieldType('amount')->toVerbal($amount);
@@ -232,7 +233,7 @@ class acc_AllocatedExpenses extends core_Master
     
     
     /**
-     * След рендиране на еденичния изглед
+     * След рендиране на единичния изглед
      */
     public static function on_AfterRenderSingle($mvc, &$tpl, $data)
     {
@@ -292,6 +293,15 @@ class acc_AllocatedExpenses extends core_Master
     
     
     /**
+     * Извиква се след подготовката на toolbar-а за табличния изглед
+     */
+    protected static function on_AfterPrepareListToolbar($mvc, &$data)
+    {
+    	$data->toolbar->removeBtn('btnAdd');
+    }
+    
+    
+    /**
      * Преди показване на форма за добавяне/промяна.
      *
      * @param core_Manager $mvc
@@ -311,7 +321,7 @@ class acc_AllocatedExpenses extends core_Master
     	}
     	
     	// Намираме ориджина и подготвяме опциите за избор на папки на контрагенти
-    	$firstDoc = doc_Threads::getFirstDocument($rec->threadId);
+    	expect($firstDoc = doc_Threads::getFirstDocument($rec->threadId));
     	$form->setOptions('contragentFolderId', array('' => '') + doc_Folders::getOptionsByCoverInterface('crm_ContragentAccRegIntf'));
 
     	// Ако има избрана папка на контрагент, зареждаме всички достъпни сделки като предложение
@@ -486,6 +496,7 @@ class acc_AllocatedExpenses extends core_Master
     		
     		// Намираме контейнера на първия документ в нишката
     		$doc = doc_Threads::getFirstDocument($rec->threadId);
+    		$firstDocument = $doc;
     		$baseContainerId = $doc->fetchField('containerId');
     		$firstDocumentHandle = $doc->getHandle();
     		
@@ -494,6 +505,9 @@ class acc_AllocatedExpenses extends core_Master
     			
     			 // Намираме документа по хендлъра
     			 $doc = doc_Containers::getDocumentByHandle($rec->dealHandler);
+    			 if(isset($doc) && !$doc->haveRightFor('single')){
+    			 	unset($doc);
+    			 }
     			 
     			 // Трябва да има такава сделка
     			 if($doc){
@@ -520,7 +534,8 @@ class acc_AllocatedExpenses extends core_Master
     		if(!$form->gotErrors()){
     			$rec->correspondingDealOriginId = $correpspondingContainerId;
     			if(!isset($rec->amount)){
-    				$rec->amount = $mvc->getDefaultAmountToAllocate($rec->correspondingDealOriginId);
+    				$chargeVat = $firstDocument->fetchField('chargeVat');
+    				$rec->amount = $mvc->getDefaultAmountToAllocate($rec->correspondingDealOriginId, $chargeVat);
     				if(empty($rec->amount)){
     					$form->setError('amount', 'Не може автоматично да се определи сумата, Моля задайте ръчно');
     				}
@@ -633,14 +648,18 @@ class acc_AllocatedExpenses extends core_Master
      * @param int $correspondingOriginId - ориджин на документ кореспондент
      * @return double $amount - дефолтната сума
      */
-    private function getDefaultAmountToAllocate($correspondingOriginId)
+    private function getDefaultAmountToAllocate($correspondingOriginId, $chargeVat)
     {
     	$doc = doc_Containers::getDocument($correspondingOriginId);
     	$amount = 0;
     	if($doc->getInstance() instanceof findeals_Deals){
     		$amount = $doc->fetchField('amountDeal');
     	} elseif($doc->getInstance() instanceof purchase_Purchases){
-    		$amount = $doc->fetchField('amountDeal');
+    		$dRec = $doc->fetch();
+    		$amount = $dRec->amountDeal;
+    		if($chargeVat != 'yes' && $chargeVat != 'separate'){
+    			$amount -= $dRec->amountVat;
+    		}
     	}
     	
     	return $amount;

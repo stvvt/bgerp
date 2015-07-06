@@ -142,23 +142,29 @@ body {
 }
 
 .inner-framecontentTop{
-	padding: 7px 7px 3px 7px;
+	padding: 8px 7px;
 	background-color: #dddddd;
 	position: relative;
 	z-index: 1000;
-}
-
-.narrow .inner-framecontentTop{
-	padding:  9px 9px 4px 9px;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
 .portal {
+    margin-top: 0;
+    margin-bottom: 15px;
     background-color: #fff !important;
     border-radius: 2px;
     box-shadow: 0 2px 5px 0 rgba(0,0,0,.16),0 2px 10px 0 rgba(0,0,0,.12);
     -webkit-transition: -webkit-transform 300ms ease-in-out,opacity 300ms;
     transition: transform 300ms ease-in-out,opacity 300ms;
     padding: 0px 15px 15px;
+    &.detail-info {
+        border-radius: 5px;
+    }
     .legend {
        margin-left: -15px;
        margin-right: -15px;
@@ -192,6 +198,10 @@ body {
     margin-left: 2px;
     margin-right: 2px;
     margin-bottom: 2px;
+    &.portal {
+        margin-top: 10px;
+        border-radius: 5px;
+    }
 }
 /*
 #framecontentTop{
@@ -219,17 +229,22 @@ body {
     border-radius: 0;
 }
 
+.narrow #packWrapper {
+    padding: 15px 15px 10px;
+}
+
 /* позиция на табовете */
 #main-container > .tab-control > .tab-row{
 	@extend .gradient-dark;
 	border-bottom: 1px solid #bbb;
     height: 26px;
     z-index: 9;
-    padding: 0 10px;
+    padding: 0 15px;
 }
 
 .narrow #main-container > .tab-control > .tab-row {
-	top: 46px;
+    top: 44px;
+	padding: 0 13px;
 }
 
 .userInfo{
@@ -253,14 +268,16 @@ body {
     color: #111 !important;
 }
 
-.headerPath {
+.center-block {
     color: #444;
     position: absolute;
-    top: 6px;
     right:50%;
+    top: 0;
     min-width: 200px;
-    margin-right: -105px;
+    margin-right: -100px;
     text-align: center;
+    z-index: 1;
+    line-height: normal;
 }
 
 .narrow .headerPath{
@@ -285,6 +302,8 @@ body {
     a {
         color: #FFF612;
     }
+
+
 }
 .narrow .sidebar-row {
     margin-top: 47px;
@@ -299,7 +318,7 @@ body {
     ul {
         padding-left: 0;
         li {
-            border-bottom: 1px dashed #fefdd6;
+            border-bottom: 1px dashed rgba(254, 253, 214, 0.5);
             padding: 5px 0 5px 0px;
             display: block;
             &:last-child {
@@ -307,7 +326,7 @@ body {
             }
         }
         a {
-            background: url("../img/12/star-yellow.png") 4px center no-repeat;
+            background: url("../img/12/star-yellow.png") 4px 3px no-repeat;
             margin-left: 0;
             padding-left: 20px;
             outline: none;
@@ -320,6 +339,13 @@ body {
         }
 
     }
+}
+
+a.bookmark-external-url {
+    color: #0066ff;
+}
+.bookmark-wrong-url {
+    color: #b11;
 }
 
 /*menu i podmenu*/
@@ -452,43 +478,75 @@ html,body {
        background:url(../img/16/down-arrow.png) center  center no-repeat !important;
 }
 
-.menuIcon {
+.btn-sidemenu {
+    z-index: 2;
+}
+
+.btn-sidemenu {
     padding: 3px;
     width: 20px;
-    border: 2px solid #000;
+    height: 20px;
+    border: 1px solid #888;
+    padding: 4px;
     border-radius: 6px;
     cursor: pointer;
-    opacity: 0.6;
+    background: #eee;
+    margin: 0 6px;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+    .menuIcon {
+        opacity: 0.6;
+        width: 20px;
+        border-radius: 6px;
+    }
+    &:hover {
+        border-color: #444;
+        .menuIcon {
+            opacity: 0.9;
+        }
+    }
 }
 
 .menuIcon:hover {
     opacity: 1;
 }
 
-.user-options{
+.menu-options{
     display: block;
     float: left;
-    padding: 0px 15px 0px 1px;
-    margin: 0 10px;
+    margin: 0 6px;
     border-radius: 5px;
     cursor: pointer;
     position: relative;
-    border: 2px solid rgb(88, 88, 88);
+    border: 1px solid #888;
     z-index:11;
-    background: #eee url('../img/16/arrow_down3.png') 26px center no-repeat;
+    padding: 0px 15px 0px 1px;
     box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
-    img {
-      border-radius: 3px 0 0 3px;
-      height: 26px;
-      margin-left: -1px;
-      float: left;
-    }
+    background: #eee url('../img/16/arrow_down3.png') 28px center no-repeat;
     &:hover {
-        border-color: #222;
+        border-color: #444;
     }
-}
-.narrow .user-options {
-	margin: 0 15px;
+    img {
+        border-radius: 3px 0 0 3px;
+        height: 28px;
+        width: 28px;
+        margin-left: -1px;
+        float: left;
+    }
+    &.search-options {
+        img {
+            opacity: 0.6;
+        }
+        &:hover img {
+            opacity: 0.9;
+        }
+        .menu-holder {
+            left: -2px;
+            input {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+        }
+    }
 }
 
 /*menu*/
@@ -496,38 +554,39 @@ html,body {
     display: none;
     position: absolute;
     top: 30px;
-    right: 0px;
+    right: -2px;
     padding: 5px;
-    max-width: 140px;
-    min-width: 100px;
     z-index: 1000;
     background-color: #ffffff;
-    border: 1px solid #ccc;
-    border: 1px solid rgba(0, 0, 0, 0.2);
     border-radius: 6px;
+    border: 1px solid #ccc;
     box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
-    background-clip: padding-box;
-    a{
+    a {
         color: #333 !important;
         display: block;
-        padding: 3px 20px 3px 25px !important;
+        padding: 3px 20px 3px 25px;
         clear: both;
         font-weight: normal;
-        font-size: 0.9em;
-        line-height: 20px;
+        font-size: 1.05em;
         white-space: nowrap;
         &:hover{
             background-color: #f1f1f1;
         }
     }
+    &.user-holder {
+        max-width: 140px;
+    }
 }
 
 .narrow .menu-holder {
-	max-width: 200px;
 	a {
-        padding: 5px 20px 5px 25px !important;
+        padding: 5px 20px 5px 25px;
         font-size: 1em;
     }
+}
+
+.search-options .menu-holder a {
+    padding: 3px;
 }
 
 .divider {
@@ -610,8 +669,9 @@ html,body {
     border-radius: 3px;
     font-size: 0.8em;
     a, span {
-        margin: 2px;
+        margin: 0px 2px 3px;
         display: block;
+        line-height: normal;
     }
 }
 
@@ -650,34 +710,34 @@ html,body {
 /*норификации*/
 .notificationsCnt {
     display: inline-block;
-    margin-top: 4px;
-    margin-left: 10px;
+    position: relative;
+    top: -10px;
+    margin-left: 1px;
 }
+
 
 .notificationsCnt a {
     display: block;
     color: white;
-    padding: 3px;
+    padding: 1px 5px;
     font-size: 0.75em;
-    border-radius: 3px;
+    border-radius: 10px;
 }
 
 .narrow .notificationsCnt a {
-    margin-top: -1px;
-    padding: 2px 4px 2px 4px;
-    font-size: 0.85em;
+    padding: 0 4px;
 }
 
 .notificationsCnt a.haveNtf {
-    background-color: red;
-    border: solid 1px #c33 !important;
+    border: solid 1px red !important;
+    color: red;
 }
 
 .notificationsCnt a.noNtf {
 	display: none;
 }
 
-.narrow .notificationsCnt a.noNtf { 
+.narrow .notificationsCnt a.noNtf {
     color: #fff;
     border: solid 1px #999 !important;
 }
@@ -685,7 +745,9 @@ html,body {
 .portal .legend {
 	z-index: 1 !important;
 }
-
+.narrow .tooltip-text {
+    top: 5px !important;
+}
 .tooltip-button img {
 	width: 13px !important;
 	height: 13px !important;
@@ -716,6 +778,9 @@ a.button, input[type="button"], input[type="submit"], button {
 	text-shadow: 0 1px 0px #f1f1f1;
 	&:hover {
 	    background-color: #e5e5e5;
+        &.btn-disabled {
+            background-color: #dddddd;
+        }
 	}
 }
 
@@ -765,14 +830,26 @@ select, input, textarea , .chzn-container-single .chzn-single, .chzn-container-a
 form[method="post"] input[type="submit"] {
 	background-color: #888;
 	text-shadow: none;
-	color: #fff !important;
+	color: #fff;
 	&:hover {
-	   background-color: #999 !important;
+	   background-color: #999;
+        &.btn-disabled {
+            background-color: #888;
+        }
 	}
 }
 
 form[method=post] input[type=button], form[method=post] a.button {
-	background-color: #ccc;
+	background-color: #aaa;
+    border: 1px solid #999 !important;
+    text-shadow: none;
+    &:hover {
+        background-color: #b1b1b1;
+    }
+}
+
+.btn-disabled {
+    color: #bbb !important;
 }
 
 .vertical .formTitle {
@@ -857,6 +934,10 @@ input[type="button"].more-btn {
 	padding-right: 0.1em !important;
 }
 
+div.tab-control.alphabet div.tab-row {
+    margin-top: 4px;
+}
+
 div.tab-control.alphabet div.tab-row .tab{
 	float: left;
 	background: #F5F5F5;
@@ -931,4 +1012,56 @@ div.tab-control.deal-history-tab .tab-row .tab {
 
 .tableHolder {
     width: 100%;
+}
+@media handheld, only screen and (max-width: 800px) {
+	.narrow  .sidemenu-push-toleft#main-container {
+		margin-left: -170px;
+	}
+    .narrow  .sidemenu-push-toright#main-container {
+        margin-right: -170px;
+    }
+	.narrow .sidemenu-push-toleft #framecontentTop, .narrow .sidemenu-push-toleft .tab-control > .tab-row {
+		left: -170px !important;
+	}
+}
+
+@media handheld, only screen and (max-width: 1280px) {
+    @-moz-document url-prefix() {
+        .center-block {
+            top: -4px;
+            .notificationsCnt {
+                top: -2px;
+            }
+        }
+    }
+}
+
+@media handheld, only screen and (max-width: 600px) {
+    .inner-framecontentTop{
+        padding: 7px 7px 9px 7px !important;
+    }
+    .narrowPortalBlocks {
+        margin: 5px;
+    }
+    #packWrapper {
+        padding: 17px 7px 10px !important;
+    }
+    #main-container > div.tab-control > div.tab-row > .tab {
+        margin: 5px 2px 3px;
+    }
+    .btn-sidemenu {
+        margin: 0;
+    }
+    #main-container > .tab-control > .tab-row {
+        padding: 0 6px 1px !important;
+        top: 44px;
+    }
+    .bookmarkLink {
+        &.addBookmarkLink {
+            right: 7px;
+        }
+        &.listBookmarkLink {
+            left: 7px;
+        }
+    }
 }

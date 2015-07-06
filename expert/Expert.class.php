@@ -11,7 +11,7 @@ defIfNot('EXPERT_SAVE_STATE_IN_CACHE', TRUE);
 /**
  * Дефинира колко минути е 'живо' състоянието
  */
-defIfNot('EXPERT_STATE_LIFETIME', 45);
+defIfNot('EXPERT_STATE_LIFETIME', 145);
 
 
 /**
@@ -380,6 +380,8 @@ class expert_Expert extends core_FieldSet {
      */
     function getState()
     {
+        $state = new stdClass();
+        
         foreach($this->vals as $name => $value) {
             $state->vars[$name] = array('0' => $this->vals[$name], '1' => $this->setInStep[$name], '2' => $this->fromDialog[$name]);
         }

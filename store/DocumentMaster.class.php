@@ -80,7 +80,7 @@ abstract class store_DocumentMaster extends core_Master
     	$mvc->FLD('weight', 'cat_type_Weight', 'input=none,caption=Тегло');
     	$mvc->FLD('volume', 'cat_type_Volume', 'input=none,caption=Обем');
     	
-    	$mvc->FLD('note', 'richtext(bucket=Notes,rows=3)', 'caption=Допълнително->Бележки');
+    	$mvc->FLD('note', 'richtext(bucket=Notes,rows=6)', 'caption=Допълнително->Бележки');
     	$mvc->FLD('state',
     			'enum(draft=Чернова, active=Контиран, rejected=Сторнирана)',
     			'caption=Статус, input=none'
@@ -133,7 +133,7 @@ abstract class store_DocumentMaster extends core_Master
     		$rec = &$form->rec;
     		
     		// Ако има локация и тя е различна от договорената, слагаме предупреждение
-    		if(!empty($rec->locationId) && !$form->dealInfo->get('deliveryLocation') && $rec->locationId != $form->dealInfo->get('deliveryLocation')){
+    		if(!empty($rec->locationId) && $form->dealInfo->get('deliveryLocation') && $rec->locationId != $form->dealInfo->get('deliveryLocation')){
     			$agreedLocation = crm_Locations::getTitleById($form->dealInfo->get('deliveryLocation'));
     			$form->setWarning('locationId', "Избраната локация е различна от договорената \"{$agreedLocation}\"");
     		}
@@ -350,9 +350,8 @@ abstract class store_DocumentMaster extends core_Master
 	   					$row->ourLocationAddress = $ourLocationAddress;
 	   				}
 	   			}
-	   				
-	   			$contLocationAddress = crm_Locations::getAddress($rec->locationId)->getContent();
 	   			
+	   			$contLocationAddress = crm_Locations::getAddress($rec->locationId);
 	   			if($contLocationAddress != ''){
 	   				$row->deliveryLocationAddress = core_Lg::transliterate($contLocationAddress);
 	   			}

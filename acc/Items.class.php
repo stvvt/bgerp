@@ -194,7 +194,7 @@ class acc_Items extends core_Manager
             
             // Задаваме уникален номер на контейнера в който ще се реплейсва туултипа
             $mvc->unique ++;
-            $unique = $mvc->unique;
+            $unique = $mvc->unique . rand();
             
             $id = (is_object($rec)) ? $rec->id : $rec;
             $tooltipUrl = toUrl(array('acc_Items', 'showItemInfo', $id, 'unique' => $unique), 'local');
@@ -452,6 +452,9 @@ class acc_Items extends core_Manager
             
             // Ако избраната номенклатура има изискване за интерфейси
             $listRec = acc_Lists::fetch(reset($rec->lists));
+            if(!$listRec){
+            	$res = 'no_one';
+            }
             
             if($listRec->regInterfaceId){
                 $intName = core_Interfaces::fetchField($listRec->regInterfaceId, 'name');

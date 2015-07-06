@@ -75,8 +75,7 @@ class trans_plg_LinesPlugin extends core_Plugin
 			$url = array($mvc, 'changeLine', $rec->id, 'ret_url' => TRUE);
 			
 			if($mvc->haveRightFor('changeLine', $rec)){
-				$title = (isset($rec->lineId)) ? 'Редакция на транспортна линия' : 'Добавяне на нова транспортна линия';
-				$data->toolbar->addBtn('Транспорт', $url, "ef_icon=img/16/lorry_go.png, title = {$title}");
+				$data->toolbar->addBtn('Транспорт', $url, "ef_icon=img/16/lorry_go.png, title = Промяна на транспортната информация");
 			}
 		}
 	}
@@ -161,8 +160,8 @@ class trans_plg_LinesPlugin extends core_Plugin
 	 * @param array $products - масив от продуктите
 	 * 					[productId]    - ид на продукта
 	 * 					[packQuantity] - количество на опаковките
-	 * 					[weight]       - еденичното тегло
-	 * 					[volume]       - еденичния обем
+	 * 					[weight]       - единичното тегло
+	 * 					[volume]       - единичния обем
 	 */
 	public static function on_AfterGetMeasures($mvc, &$res, $products)
 	{

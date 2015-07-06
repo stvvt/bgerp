@@ -85,7 +85,7 @@ class select2_PluginSelect extends core_Plugin
             $attr['id'] = str::getRand('aaaaaaaa');
         }
         
-        $minItems = $invoker->params['select2MinItems'] ? $invoker->params['select2MinItems'] : self::$minItems;
+        $minItems = isset($invoker->params['select2MinItems']) ? $invoker->params['select2MinItems'] : self::$minItems;
     	
         $optionsCnt = isset($this->optCnt) ? $this->optCnt : count($invoker->options);
         
@@ -181,6 +181,8 @@ class select2_PluginSelect extends core_Plugin
                     
                     $r->element->className .= ($r->element->className) ? ' ' : '';
                     $r->element->className .= 'group';
+                    $r->group = TRUE;
+                    $r->element->group = TRUE;
                     
                     $r->id = NULL;
                     $group = $r;

@@ -15,7 +15,7 @@
  * @category  bgerp
  * @package   deals
  * @author    Ivelin Dimov <ivelin_pdimov@abv.bg>
- * @copyright 2006 - 2014 Experta OOD
+ * @copyright 2006 - 2015 Experta OOD
  * @license   GPL 3
  * @since     v 0.1
  */
@@ -43,7 +43,7 @@ class deals_OpenDeals extends core_Manager {
     /**
      * Полета, които ще се показват в листов изглед
      */
-    public $listFields = 'valior=Вальор, docId=Документ, client=Клиент, currencyId=Валута, amountDeal, amountPaid, state=Състояние, newDoc=Действие';
+    public $listFields = 'valior=Вальор, docId=Документ, client=Клиент, currencyId=Валута, amountDelivered, amountPaid, toPay=Сума->За плащане, toDeliver=Сума->За доставяне, state=Състояние, newDoc=Действие';
     
     
     /**
@@ -74,6 +74,7 @@ class deals_OpenDeals extends core_Manager {
     	$this->FLD('valior', 'date', 'caption=Дата');
     	$this->FLD('amountDeal', 'double(decimals=2)', 'caption=Сума->Поръчано, summary = amount');
     	$this->FLD('amountPaid', 'double(decimals=2)', 'caption=Сума->Платено, summary = amount');
+    	$this->FLD('amountDelivered', 'double(decimals=2)', 'caption=Сума->Доставено, summary = amount');
     	$this->FLD('state', 'enum(active=Активно, closed=Приключено, rejected=Оттеглено)', 'caption=Състояние');
     	
     	$this->setDbUnique('docClass,docId');
@@ -83,7 +84,7 @@ class deals_OpenDeals extends core_Manager {
 	/**
       * Добавя ключови думи за пълнотекстово търсене
       */
-     function on_AfterGetSearchKeywords($mvc, &$res, $rec)
+     protected static function on_AfterGetSearchKeywords($mvc, &$res, $rec)
      {
     	// Извличане на ключовите думи от документа
      	$object = new core_ObjectReference($rec->docClass, $rec->docId);
@@ -100,7 +101,7 @@ class deals_OpenDeals extends core_Manager {
 	/**
      * Малко манипулации след подготвянето на формата за филтриране
      */
-    static function on_AfterPrepareListFilter($mvc, $data)
+    protected static function on_AfterPrepareListFilter($mvc, $data)
     {
     	
     	$data->listFilter->FNC('show', 'varchar', 'input=hidden');
@@ -116,6 +117,8 @@ class deals_OpenDeals extends core_Manager {
     	$data->query->orderBy('state', "ASC");
 		$data->query->orderBy('id', "DESC");
 		
+		$data->listFilter->setDefault('sState', 'active');
+		
 		if(isset($data->listFilter->rec->sState) && $data->listFilter->rec->sState != 'all'){
 			$data->query->where("#state = '{$data->listFilter->rec->sState}'");
 		}
@@ -127,13 +130,20 @@ class deals_OpenDeals extends core_Manager {
 	/**
 	 * Преди подготовка на полетата за показване в списъчния изглед
 	 */
-	static function on_AfterPrepareListFields($mvc, $data)
+	protected static function on_AfterPrepareListFields($mvc, $data)
     {
     	if(Mode::is('screenMode', 'narrow')){
     		
     		// В мобилен изглед, бутона за нови документи е първи
     		$tmp = array_pop($data->listFields);
     		$data->listFields = array('newDoc' => $tmp) + $data->listFields;
+    	}
+    	
+    	$show = Request::get('show', 'enum(store,bank,cash)');
+    	if($show == 'store'){
+    		unset($data->listFields['toPay']);
+    	} else {
+    		unset($data->listFields['toDeliver']);
     	}
     }
 	
@@ -153,21 +163,22 @@ class deals_OpenDeals extends core_Manager {
     		'valior' => $info->get('agreedValior'),
     		'amountDeal' => $info->get('amount'),
     		'amountPaid' => $info->get('amountPaid'), 
+    		'amountDelivered' => $info->get('deliveryAmount'),
     		'state' => $rec->state,
     		'docClass' => $classId,
     		'docId' => $rec->id,
     		'id' => static::fetchField("#docClass = {$classId} AND #docId = {$rec->id}", 'id'),
     	);
-    		
+    	
 	    static::save((object)$new);
     }
     
     
     /**
-     * След подготовка на list туулбара се добавя флага за
+     * След подготовка на list тулбара се добавя флага за
      * обвивката на пакета
      */
-    function on_AfterPrepareListToolbar($mvc, &$res, $data)
+    protected static function on_AfterPrepareListToolbar($mvc, &$res, $data)
     {
     	if(Request::get('Rejected', 'int')){
     		$data->toolbar->buttons['listBtn']->url = array($mvc, 'list', 'show' => Request::get('show'));
@@ -189,24 +200,23 @@ class deals_OpenDeals extends core_Manager {
     		
     		// Извличане на записа на документа и папката
     		$DocClass = cls::get($rec->docClass);
-	    	$docRec = $DocClass->fetch($rec->docId, 'folderId,currencyId,containerId,currencyRate,threadId');
-	    	$folderRec = doc_Folders::fetch($docRec->folderId);
+	    	
+    		$docRec = $DocClass->fetch($rec->docId, 'folderId,currencyId,containerId,currencyRate,threadId');
+	    	
+    		$folderRec = doc_Folders::fetch($docRec->folderId);
 	    	
 	    	$row->currencyId = $docRec->currencyId;
-	    	$inCharge = doc_Folders::recToVerbal($folderRec)->inCharge;
+	    	$inCharge = doc_Folders::recToVerbal($folderRec, 'id,inCharge')->inCharge;
 	    	$row->client = $inCharge. " » " . doc_Folders::recToVerbal($folderRec)->title;
 	    	$row->docId = $DocClass->getHandle($rec->docId);
 	    	
     		// Обръщане на сумите в валутата на документа
-	    	foreach (array('Deal', 'Paid') as $name){
+	    	foreach (array('Deal', 'Paid', 'Delivered') as $name){
 	    		$field = "amount{$name}";
+		    	
+	    		$row->$field = $mvc->getFieldType($field)->toVerbal($rec->$field / $docRec->currencyRate);
 		    	if(empty($rec->$field)){
-		    		$coreConf = core_Packs::getConfig('core');
-		    		$pointSign = $coreConf->EF_NUMBER_DEC_POINT;
-		    		
-		    		$row->$field = "<span class='quiet'>0" . $pointSign . "00</span>";
-		    	} else {
-		    		$row->$field = $mvc->getFieldType($field)->toVerbal($rec->$field / $docRec->currencyRate);
+		    		$row->$field = "<span class='quiet'>{$row->$field}</span>";
 		    	}
 	    	}
 	    	
@@ -230,6 +240,34 @@ class deals_OpenDeals extends core_Manager {
 	    		$row->docId = $icon . " " . "<span style='color:#777'>" . $row->docId . "";
 	    		unset($row->amountDeal, $row->amountPaid, $row->currencyId);
 	    	}
+	    	
+	    	// За немигрираните стари приключени сделки, доставеното да е равно на договореното
+	    	if($rec->state == 'closed' && empty($rec->amountDelivered)){
+	    		$rec->amountDelivered = $rec->amountDeal;
+	    		$row->amountDelivered = $mvc->getFieldType('amountDelivered')->toVerbal($rec->amountDelivered);
+	    	}
+	    	
+	    	$toPay = ($rec->amountDelivered - $rec->amountPaid) / $docRec->currencyRate;
+	    	$toDeliver = ($rec->amountDeal - $rec->amountDelivered) / $docRec->currencyRate;
+	    	
+	    	$row->toPay = $mvc->getFieldType('amountDeal')->toVerbal($toPay);
+	    	
+	    	$row->toPay = $mvc->getFieldType('amountDeal')->toVerbal($toPay);
+	    	if(empty($toPay)){
+	    		$row->toPay = "<span class='quiet'>{$row->toPay}</span>";
+	    	}
+	    	if($toPay < 0){
+	    		$row->toPay = "<span style = 'color:red'>{$row->toPay}</span>";
+	    	}
+	    	$row->toPay = "<span style = 'float:right'>{$row->toPay}</span>";
+	    	
+	    	if(empty($toDeliver)){
+	    		$row->toDeliver = "<span class='quiet'>{$row->toDeliver}</span>";
+	    	}
+	    	if($toDeliver < 0){
+	    		$row->toDeliver = "<span style = 'color:red'>{$row->toDeliver}</span>";
+	    	}
+	    	$row->toDeliver = "<span style = 'float:right'>{$row->toDeliver}</span>";
     	}
     }
     
@@ -286,7 +324,7 @@ class deals_OpenDeals extends core_Manager {
 	    foreach ($buttons as $title => $className){
 	    	$Cls = cls::get($className);
 	    	$str = mb_strtolower($Cls->singleTitle);
-	    	if($draftRec = $Cls->fetch("#threadId = '{$threadId}' AND #state = 'draft'")){
+	    	if($draftRec = $Cls->fetchField("#threadId = '{$threadId}' AND #state = 'draft'", 'id')){
 	    		if($Cls->haveRightFor('single', $draftRec)){
 	    			$btns .= ht::createBtn($title, array($className, 'single', $draftRec->id), NULL, NULL, "ef_icon=img/16/view.png,title=Преглед на {$str} #{$Cls->getHandle($draftRec->id)}");
 	    		}

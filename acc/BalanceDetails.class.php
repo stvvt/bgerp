@@ -69,6 +69,14 @@ class acc_BalanceDetails extends core_Detail
     
     
     /**
+     * Масив с обновените записи от журнала
+     * 
+     * @var array
+     */
+    public $updatedRecs = array();
+    
+    
+    /**
      * Кой има достъп до хронологичната справка
      */
     public $canHistory = 'powerUser';
@@ -855,6 +863,7 @@ class acc_BalanceDetails extends core_Detail
      *
      * @param string $from дата в MySQL формат
      * @param string $to дата в MySQL формат
+     * @return boolean $hasUpdatedJournal - дали да продължи преизчисляването или не
      */
     public function calcBalanceForPeriod($from, $to)
     {
@@ -871,9 +880,11 @@ class acc_BalanceDetails extends core_Detail
         	core_App::setTimeLimit($timeLimit);
         }
         
+        // Слагаме флага да не преизчислява баланса
+        $hasUpdatedJournal = FALSE;
+        
         if(count($recs)){
-            $hasUpdatedJournal = FALSE;
-        	
+            
             // Захранваме стратегиите при нужда
             foreach ($recs as $rec){
                 $this->feedStrategy($rec);
@@ -890,15 +901,17 @@ class acc_BalanceDetails extends core_Detail
                 // Обновява се записа само ако има промяна с цената
                 if($update){
                     $JournalDetails->save_($rec);
-                    $hasUpdatedJournal = TRUE;
+                   
+                    // Дигаме флага за преизчисляване само ако, записан не е бил обновяван до сега
+                    //if(!isset($this->updatedBalances[$rec->id])){
+                    	$hasUpdatedJournal = TRUE;
+                   // }
                 }
             }
+            //$this->Master->log(ht::mixedToHtml($test));
             
-            if($hasUpdatedJournal){
-            	
-            	// Ако е имало преизчисляване на баланса. Слагаме флаг в сесията, че баланса трябва да се преизчисли отново
-            	Mode::setPermanent('recalcBalancesAgain', TRUE);
-            }
+            // Връщаме дали трябва да се преизчислява баланса
+            return $hasUpdatedJournal;
         }
     }
     
@@ -922,7 +935,7 @@ class acc_BalanceDetails extends core_Detail
     		if($rec->{$quantityField}){
     			
     			// Изчисляваме цената
-    			@$price = round($rec->amount / $rec->{$quantityField}, 4);
+    			@$price = round($rec->amount / $rec->{$quantityField}, 8);
     			
     			// Ако изчислената сума е различна от записаната в журнала
     			if(trim($rec->{$priceField}) != trim($price)){
@@ -1183,6 +1196,7 @@ class acc_BalanceDetails extends core_Detail
      * Филтрира заявка към модела за показване на определени данни
      *
      * @param core_Query $query - Заявка към модела
+     * @param int   $balanceId  - ид на баланса
      * @param mixed $accs       - списък от систем ид-та на сметките
      * @param mixed $itemsAll   - списък от пера, за които може да са на произволна позиция
      * @param mixed $items1     - списък с пера, от които поне един може да е на първа позиция
@@ -1190,7 +1204,7 @@ class acc_BalanceDetails extends core_Detail
      * @param mixed $items3     - списък с пера, от които поне един може да е на трета позиция
      * @return array            - масив със всички извлечени записи
      */
-    public static function filterQuery(core_Query &$query, $id, $accs = NULL, $itemsAll = NULL, $items1 = NULL, $items2 = NULL, $items3 = NULL)
+    public static function filterQuery(core_Query &$query, $balanceId, $accs = NULL, $itemsAll = NULL, $items1 = NULL, $items2 = NULL, $items3 = NULL)
     {
         expect($query->mvc instanceof acc_BalanceDetails);
         
@@ -1206,7 +1220,7 @@ class acc_BalanceDetails extends core_Detail
         }
         
         // ... само детайлите от последния баланс
-        $query->where("#balanceId = {$id}");
+        $query->where("#balanceId = {$balanceId}");
         
         // Перата които може да са на произволна позиция
         $itemsAll = arr::make($itemsAll);

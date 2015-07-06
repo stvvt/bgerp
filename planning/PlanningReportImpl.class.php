@@ -57,6 +57,7 @@ class planning_PlanningReportImpl extends frame_BaseDriver
     {
     	$form->FLD('from', 'date', 'caption=Начало,input=none');
     	$form->FLD('to', 'date', 'caption=Край,input=none');
+    	$form->FLD('store', 'key(mvc=store_Stores, select=name)', 'caption=Склад');
     	
     	$this->invoke('AfterAddEmbeddedFields', array($form));
     }
@@ -107,8 +108,9 @@ class planning_PlanningReportImpl extends frame_BaseDriver
         
         $query->where("#state = 'active'");
         $queryJob->where("#state = 'active' OR #state = 'stopped' OR #state = 'wakeup'");
+
+        $dates = array();
         
-       //bp(store_Products::getProductsInStore());
 	    // за всеки един активен договор за продажба
 	    while($rec = $query->fetch()) {
 	        
@@ -122,19 +124,17 @@ class planning_PlanningReportImpl extends frame_BaseDriver
 	        	$date = $rec->valior;
 	        }
 	        	
-	        $id = $rec->id;
-	        	
-	        if (sales_SalesDetails::fetch("#saleId = $id") !== FALSE) {
+	        if (sales_SalesDetails::fetch("#saleId = '{$rec->id}'") !== FALSE) {
 	        		
 	        		
-	        	$p = sales_SalesDetails::fetch("#saleId = $rec->id");
+	        	$p = sales_SalesDetails::fetch("#saleId = '{$rec->id}'");
 	            $productId = $p->productId;
-	            //bp(store_Products::fetchField("#productId = {$productId}", 'quantity'));
+	       
 	            $productInfo = cat_Products::getProductInfo($productId);
 	       
 	            if ($productInfo->meta['canManifacture'] == TRUE) {
-	            	$products[] = sales_SalesDetails::fetch("#saleId = $id AND #productId = $productId");
-	                $dates[$productId][$id] = $date;
+	            	$products[] = sales_SalesDetails::fetch("#saleId = '{$rec->id}' AND #productId = '{$productId}'");
+	                $dates[$productId][$rec->id] = $date;
 	            } else {
 	                continue;
 	            }
@@ -143,8 +143,9 @@ class planning_PlanningReportImpl extends frame_BaseDriver
 	        		continue;
 	        }
 	    }
-	       
-	        
+
+	    $dateSale = array();
+	    
 	    foreach ($dates as $prd => $sal) {
 	    	if(count($sal) > 1) {
 	        	$dateSale[$prd] = min($sal);
@@ -156,7 +157,7 @@ class planning_PlanningReportImpl extends frame_BaseDriver
 	        }
 	        	
 	    }
-
+	   
 	    // за всеки един продукт
 	    if(is_array($products)){
 			foreach($products as $product) {
@@ -171,9 +172,11 @@ class planning_PlanningReportImpl extends frame_BaseDriver
 		        	
 		        if ($product->quantityDelivered >= $product->quantity) continue;
 		        
-		        $storeId = store_Stores::getCurrent();
-		        //bp($store, $product);
-			        	
+		        
+		        $storeId = $data->rec->store;
+
+		       
+		        //bp(store_Products::fetchField("#productId = '{$product->productId}' AND #classId = '{$product->classId}' AND #storeId = '{$storeId}'", 'quantity'));
 		        // ако нямаме такъв запис,
 		        // го добавяме в масив
 			    if(!array_key_exists($index, $data->recs)){
@@ -182,9 +185,10 @@ class planning_PlanningReportImpl extends frame_BaseDriver
 				        		(object) array ('id' => $product->productId,
 						        				'quantity'	=> $product->quantity,
 						        				'quantityDelivered' => $product->quantityDelivered,
+				        				        'quantityToDelivered' => abs($product->quantityDelivered - $product->quantity),
 				        						'dateSale' => $dateSale[$product->productId],
 						        				'sales' => array($product->saleId),
-				        		                'store' => store_Products::fetchField("#productId = {$product->productId} AND #classId = {$product->classId} AND #storeId = {$storeId}", 'quantity'));
+				        		                'store' => store_Products::fetchField("#productId = {$index} AND #classId = {$product->classId} AND #storeId = {$storeId}", 'quantity'));
 			        		
 			      // в противен случай го ъпдейтваме
 			    } else {
@@ -192,6 +196,7 @@ class planning_PlanningReportImpl extends frame_BaseDriver
 					$obj = &$data->recs[$index];
 				    $obj->quantity += $product->quantity;
 				    $obj->quantityDelivered += $product->quantityDelivered;
+				    $obj->quantityToDelivered += abs($product->quantityDelivered - $product->quantity);
 				    $obj->dateSale = $dateSale[$product->productId];
 				    $obj->sales[] = $product->saleId;
 				    $obj->store = store_Products::fetchField("#productId = {$product->productId} AND #classId = {$product->classId} AND #storeId = {$storeId}", 'quantity');
@@ -199,11 +204,13 @@ class planning_PlanningReportImpl extends frame_BaseDriver
 			    }
 			}
 	    }
-	
+	    
+	    $dateJob = array();
+	    
 	    while ($recJobs = $queryJob->fetch()) {
 	    	$indexJ = $recJobs->productId;
 	        $dateJob[$recJobs->productId][$recJobs->id] = $recJobs->dueDate;
-	        	 
+	       
 	        if ($recJobs->quantityProduced >= $recJobs->quantity) continue;
 	        // ако нямаме такъв запис,
 	        // го добавяме в масив
@@ -212,9 +219,11 @@ class planning_PlanningReportImpl extends frame_BaseDriver
 	        		(object) array ('id' => $recJobs->productId,
 	        				'quantityJob'	=> $recJobs->quantity,
 	        				'quantityProduced' => $recJobs->quantityProduced,
+	        				'quantityToProduced'=> abs($recJobs->quantityProduced - $recJobs->quantity),
 	        				'date' => $recJobs->dueDate,
 	        				'jobs' => array($recJobs->id),
-	        				'store' => store_Products::fetchField("#productId = {$product->productId} AND #classId = {$product->classId} AND #storeId = {$storeId}", 'quantity'));
+	        				'store' => store_Products::fetchField("#productId = {$recJobs->productId}  AND #storeId = {$storeId}", 'quantity')
+	        				);
 	
 	        // в противен случай го ъпдейтваме
 	        } else {
@@ -222,40 +231,45 @@ class planning_PlanningReportImpl extends frame_BaseDriver
 	        	$obj = &$data->recs[$indexJ];
 	        	$obj->quantityJob += $recJobs->quantity;
 	        	$obj->quantityProduced += $recJobs->quantityProduced;
+	        	$obj->quantityToProduced += abs($recJobs->quantityProduced - $recJobs->quantity);
 	        	$obj->date =  $recJobs->dueDate;
 	        	$obj->jobs[] = $recJobs->id;
-	        	$obj->store = store_Products::fetchField("#productId = {$product->productId} AND #classId = {$product->classId} AND #storeId = {$storeId}", 'quantity');
+	        	$obj->store = store_Products::fetchField("#productId = {$recJobs->productId}  AND #storeId = {$storeId}", 'quantity');
 	
 	        }
 	    }
 
 
-    	
-    	foreach ($dateJob as $prdJ => $job) {
-        	if(count($job) > 1) {
-        		$data->recs[$prdJ]->date = min($job);
-        		$data->recs[$prdJ]->date = dt::mysql2timestamp($data->recs[$prdJ]->date);
-        	} else {
-        		foreach ($job as $dJ){
-        			$data->recs[$prdJ]->date = dt::mysql2timestamp($dJ);
-        		}
-        	}
-        }
-        
+	    foreach($data->recs as $id => $rec) {
+	    	if (isset($dateJob[$id])) {
+	    		if (count($dateJob[$id]) > 1) {
+		    		$rec->date = min($dateJob[$id]);
+		    		$rec->date  = dt::mysql2timestamp($rec->date);
+	    		} else {
+	    			$rec->date  = dt::mysql2timestamp($rec->date);
+	    		}
+	    	}
+	    	
+	    }
+
         arr::order($data->recs, 'date');
         arr::order($data->recs, 'dateSale');
         
-        
-        for ($dt = 0; $dt <= count($data->recs); $dt++) {
-        	if ($data->recs[$dt]->date) {
-        		$data->recs[$dt]->date = dt::timestamp2Mysql($data->recs[$dt]->date);
+        foreach ($data->recs as $id => $recs) {
+        	if ($recs->date) {
+        		$recs->date = dt::timestamp2Mysql($recs->date);
         	}
         	
-        	if ($data->recs[$dt]->dateSale) {
-        		$data->recs[$dt]->dateSale = dt::timestamp2Mysql($data->recs[$dt]->dateSale);
+        	if ($recs->dateSale) {
+        		$recs->dateSale = dt::timestamp2Mysql($recs->dateSale);
+        	}
+        	
+        	if (($recs->quantityToProduced < $recs->store) || ($recs->quantityToDelivered < $recs->store)) {
+        		unset($data->recs[$id]);
         	}
         }
-	   
+
+        //bp($index,$indexJ, $data);
         return $data;
     }
     
@@ -273,11 +287,12 @@ class planning_PlanningReportImpl extends frame_BaseDriver
         $data->pager = $pager;
         
         if(count($data->recs)){
-          
+         // bp($data->recs);
             foreach ($data->recs as $id => $rec){
 				if(!$pager->isOnPage()) continue;
                 
                 $row = $mvc->getVerbal($rec);
+       
                 $data->rows[$id] = $row;
                
                 if ($rec->sales) { 
@@ -290,7 +305,6 @@ class planning_PlanningReportImpl extends frame_BaseDriver
                 	}
                 	
                 } 
-                
 
                 $data->rows[$id]->ordered = $row->quantity . "<br><span style='color:#0066FF'>{$row->quantityJob}</span>";
                 $data->rows[$id]->delivered = $row->quantityDelivered . "<br><span style='color:#0066FF'>{$row->quantityProduced}</span>";
@@ -314,6 +328,7 @@ class planning_PlanningReportImpl extends frame_BaseDriver
                 }
             }
         }
+
 
         $res = $data;
     }
@@ -405,29 +420,13 @@ class planning_PlanningReportImpl extends frame_BaseDriver
     	$RichtextType = cls::get('type_Richtext');
         $Date = cls::get('type_Date');
 		$Int = cls::get('type_Int');
-		
-		if ($rec->quantityDelivered && $rec->quantity) {
-			$toDeliver = abs($rec->quantityDelivered - $rec->quantity);
-		} elseif ($rec->quantityDelivered !== 0 || $rec->quantityDelivered == NULL) {
-			$toDeliver = $rec->quantity;
-		} else {
-			$toDeliver = '';
-		}
-		
-		if ($rec->quantityProduced && $rec->quantityJob) {
-			$toProduced = abs($rec->quantityProduced - $rec->quantityJob);
-		} elseif ($rec->quantityProduced !== 0 || $rec->quantityProduced == NULL) {
-			$toProduced = $rec->quantityJob;
-		} else {
-			$toProduced = '';
-		}
 
         $row = new stdClass();
         
         $row->id = cat_Products::getShortHyperlink($rec->id);
     	$row->quantity = $Int->toVerbal($rec->quantity);
     	$row->quantityDelivered = $Int->toVerbal($rec->quantityDelivered);
-    	$row->quantityToDeliver = $Int->toVerbal($toDeliver);
+    	$row->quantityToDeliver = $Int->toVerbal($rec->quantityToDelivered);
     	
     	$row->dateSale = $Date->toVerbal($rec->dateSale);
     		
@@ -439,7 +438,7 @@ class planning_PlanningReportImpl extends frame_BaseDriver
     		
     	$row->quantityJob = $Int->toVerbal($rec->quantityJob);
     	$row->quantityProduced = $Int->toVerbal($rec->quantityProduced);
-    	$row->quantityToProduced = $Int->toVerbal($toProduced);
+    	$row->quantityToProduced = $Int->toVerbal($rec->quantityToProduced);
     	$row->date = $Date->toVerbal($rec->date);
     		
     	for($j = 0; $j <= count($rec->jobs)-1; $j++) { 
@@ -478,25 +477,19 @@ class planning_PlanningReportImpl extends frame_BaseDriver
       	return $activateOn;
 	}
 
-	public function showInfo()
-	{
-		$tooltipUrl = toUrl(array('acc_Items', 'showItemInfo', $id, 'unique' => $unique), 'local');
-		
-		return $tooltipUrl;
-	}
+	
+    /**
+     * Ако имаме в url-то export създаваме csv файл с данните
+     *
+     * @param core_Mvc $mvc
+     * @param stdClass $rec
+     */
+    public function exportCsv()
+    {
 
-     /**
-      * Ако имаме в url-то export създаваме csv файл с данните
-      *
-      * @param core_Mvc $mvc
-      * @param stdClass $rec
-      */
-     /*public function exportCsv()
-     {
+		$exportFields = $this->getExportFields();
 
-         $exportFields = $this->getExportFields();
-
-         $conf = core_Packs::getConfig('core');
+        $conf = core_Packs::getConfig('core');
 
          if (count($this->innerState->recs) > $conf->EF_MAX_EXPORT_CNT) {
              redirect(array($this), FALSE, "Броят на заявените записи за експорт надвишава максимално разрешения|* - " . $conf->EF_MAX_EXPORT_CNT, 'error');
@@ -512,53 +505,19 @@ class planning_PlanningReportImpl extends frame_BaseDriver
          if(count($this->innerState->recs)) {
 			foreach ($this->innerState->recs as $id => $rec) {
 
-				if($this->innerState->bShowQuantities || $this->innerState->rec->groupBy){
-					
-					
-					$baseQuantity += $rec->baseQuantity;
-					$baseAmount += $rec->baseAmount;
-					$debitQuantity += $rec->debitQuantity;
-					$debitAmount += $rec->debitAmount;
-					$creditQuantity += $rec->creditQuantity;
-					$creditAmount += $rec->creditAmount;
-					$blQuantity += $rec->blQuantity;
-					$blAmount += $rec->blAmount;
-
-				} 
 				
 				$rCsv = $this->generateCsvRows($rec);
 
-				
 				$csv .= $rCsv;
 				$csv .=  "\n";
 		
 			}
 
-			$row = new stdClass();
-			
-			$row->flag = TRUE;
-			$row->baseQuantity = $baseQuantity;
-			$row->baseAmount = $baseAmount;
-			$row->debitQuantity = $debitQuantity;
-			$row->debitAmount = $debitAmount;
-			$row->creditQuantity = $creditQuantity;
-			$row->creditAmount = $creditAmount;
-			$row->blQuantity = $blQuantity;
-			$row->blAmount = $blAmount;
-			
-			foreach ($row as $fld => $value) {
-				$value = frame_CsvLib::toCsvFormatDouble($value);
-				$row->{$fld} = $value;
-			}
-		
-		
-			$beforeRow = $this->generateCsvRows($row);
-
-			$csv = $header . "\n" . $beforeRow. "\n" . $csv;
+			$csv = $header . "\n" . $csv;
 	    } 
 
         return $csv;
-    }*/
+    }
 
 
     /**
@@ -567,20 +526,25 @@ class planning_PlanningReportImpl extends frame_BaseDriver
      *
      * @return array
      */
-    /*protected function getExportFields_()
+    protected function getExportFields_()
     {
 
-        $exportFields = $this->innerState->listFields;
-        
-        foreach ($exportFields as $field => $caption) {
-        	$caption = str_replace('|*', '', $caption);
-        	$caption = str_replace('->', ' - ', $caption);
-        	
-        	$exportFields[$field] = $caption;
-        }
+        $exportFields['id']  = "Име (код)";
+        $exportFields['quantity']  = "Продажба-Поръчано";
+        $exportFields['quantityJob']  = "Производство-Поръчано";
+        $exportFields['quantityDelivered']  = "Продажба-Доставено";
+        $exportFields['quantityProduced']  = "Производство-Произведено";
+        $exportFields['quantityToDelivered']  = "Продажба-За доставяне";
+        $exportFields['quantityToProduced']  = "Производство-За производство";
+        $exportFields['dateSale']  = "Продажба-Дата";
+        $exportFields['date']  = "Производство-Дата";
+        $exportFields['sales'] = "Продажба";
+		$exportFields['jobs']  = "Производство";
+		$exportFields['store']  = "На склад";
+
         
         return $exportFields;
-    }*/
+    }
     
     
     /**
@@ -588,54 +552,64 @@ class planning_PlanningReportImpl extends frame_BaseDriver
 	 *
 	 * @return string $rCsv
 	 */
-	/*protected function generateCsvRows_($rec)
+	protected function generateCsvRows_($rec)
 	{
 	
 		$exportFields = $this->getExportFields();
 
-		$rec = frame_CsvLib::prepareCsvRows($rec);
-	
-		$rCsv = '';
-		
-		$res = count($exportFields); 
-		
 		foreach ($rec as $field => $value) {
 			$rCsv = '';
-			
-			if ($res == 11) {
-				$zeroRow = "," . 'ОБЩО' . "," .'' . "," .'';
-			} elseif ($res == 10 || $res == 9 || $res == 8 || $res == 7) {
-				$zeroRow = "," . 'ОБЩО' . "," .'';
-			} elseif ($res <= 6) {
-				$zeroRow = "," . 'ОБЩО';
-			}
-			
-			foreach ($exportFields as $field => $caption) {
-					
-				if ($rec->{$field}) {
 	
-					$value = $rec->{$field};
-					$value = html2text_Converter::toRichText($value);
-					// escape
+			foreach ($exportFields as $fld => $caption) {
+					
+				if ($rec->{$fld}) {
+					
+					$value = $rec->{$fld};
+					
+					if (in_array($fld ,array('dateSale', 'date'))) {
+						$value = frame_CsvLib::toCsvFormatData($value);
+					
+					} 
+					
+					if ($fld == 'id') {
+
+						$value = cat_Products::getTitleById($value);
+					} 
+    	
+					if (in_array($fld ,array('quantity', 'quantityDelivered', 'quantityToDeliver', 'quantityJob', 'quantityProduced', 'quantityToProduced', 'inStore'))) {
+					
+						$value = frame_CsvLib::toCsvFormatDouble($value);
+					
+					}
+					
+					if($fld == 'sales') {
+						for($i = 0; $i <= count($value)-1; $i++) {
+							 
+							$value = sales_Sales::getTitleById($value[$i]);
+						}
+					}
+					
+    	            
+					if ($fld == 'jobs') { 
+						for($j = 0; $j <= count($value)-1; $j++) {
+								
+							$value = planning_Jobs::getTitleById($value[$j]);
+						
+						}
+					}
+		
 					if (preg_match('/\\r|\\n|,|"/', $value)) {
 						$value = '"' . str_replace('"', '""', $value) . '"';
 					}
 					$rCsv .= "," . $value;
-					
-					if($rec->flag == TRUE) {
-						
-						$zeroRow .= "," . $value;
-						$rCsv = $zeroRow;
-					}
 	
 				} else {
-					
 					$rCsv .= "," . '';
 				}
 			}
 		}
-		
+
 		return $rCsv;
-	}*/
+	}
 
 }

@@ -175,7 +175,7 @@ class acc_ProfitArticlesReport extends acc_BalanceReportImpl
 
         $tpl->replace($this->title, 'TITLE');
         $this->prependStaticForm($tpl, 'FORM');
-//bp($data);
+
         // ако имаме записи има и смисъл да
         // слагаме табове
         if($data->recs) {
@@ -210,8 +210,9 @@ class acc_ProfitArticlesReport extends acc_BalanceReportImpl
                 $dArr[$rec->grouping3] = abs($rec->blAmount);
             }
 
-            $arr = self::preparePie($dArr, 9, 'Others');
-
+            $arr = $this->preparePie($dArr, 9, 'Others');
+            //$arr = $dArr;
+            //bp($arr,$dArr);
 
             foreach ($arr as $id => $recSort) {
                 $info[mb_substr($recSort->key,0,19)] = $recSort->value;
@@ -263,6 +264,11 @@ class acc_ProfitArticlesReport extends acc_BalanceReportImpl
                 $beforeRow->placeObject($data->summary);
                 $tpl->append($beforeRow, 'ROW_BEFORE');
             }
+            
+            if($data->pager){
+            	$tpl->append($data->pager->getHtml(), 'PAGER_BOTTOM');
+            	$tpl->append($data->pager->getHtml(), 'PAGER_TOP');
+            }
 
         }
 
@@ -298,7 +304,8 @@ class acc_ProfitArticlesReport extends acc_BalanceReportImpl
         if ($cntData <= $n) {
 
             // връщаме направо масива
-            return $data;
+            //return $data;
+            return $newArr;
 
         //в противен случай
         } else {

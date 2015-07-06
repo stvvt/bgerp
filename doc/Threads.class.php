@@ -1277,7 +1277,7 @@ class doc_Threads extends core_Manager
         			$curUrl = getCurrentUrl();
         			$curUrl['Rejected'] = 1;
         			$data->toolbar->addBtn("Кош|* ({$data->rejectedCnt})",
-        			$curUrl, 'id=binBtn,class=fright,order=50', 'ef_icon = img/16/bin_closed.png');
+        			$curUrl, 'id=binBtn,class=fright,order=50' . (Mode::is('screenMode', 'narrow') ? ',row=2' : ''), 'ef_icon = img/16/bin_closed.png');
             	}
         		
         		// Ако има мениджъри, на които да се слагат бързи бутони, добавяме ги
@@ -1844,7 +1844,7 @@ class doc_Threads extends core_Manager
         // Определяме заглавито
         $rec = $this->fetch($threadId);
         $row = $this->recToVerbal($rec, 'title');
-        $form->title = 'Настройка на|*: ' . $row->title;
+        $form->title = 'Настройка на|* ' . $row->title;
         
         // Добавяме функционални полета
         $form->FNC('notify', 'enum(default=Автоматично, yes=Винаги, no=Никога)', 'caption=Известие при добавяне на документ->Известяване, input=input');
