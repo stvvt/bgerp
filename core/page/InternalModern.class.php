@@ -126,35 +126,34 @@ class core_page_InternalModern extends core_page_Active
     	
     	// Задаваме лейаута на страницата
     	$header = "<div style='position: relative'>
-	    					<a id='nav-panel-btn' class='fleft btn-menu-left'>". $menuImg ."</a>
-	    					<span class='fleft logoText'>[#PORTAL#]</span>
-	    					<span class='notificationsCnt'>[#NOTIFICATIONS_CNT#]</span>
-	    					<span class='headerPath'>[#HEADER_PATH#]</span>
-	    					<a id='fav-panel-btn' href='#fav-panel' class='fright btn-menu-right'>". $pinImg . $pinnedImg . "</a>
-	    					<a id='nav-panel-btn' class='fleft btn-sidemenu btn-menu-left push-body {$openLeftBtn}'>". $menuImg ."</a>
+	    					<a id='nav-panel-btn' class='fleft btn-sidemenu btn-menu-left'>". $menuImg ."</a>
 	    					<span class='fleft '>
 	    					    <span class='menu-options search-options'>" . $searchImg .
                                      "<span class='menu-holder'>
+                                        <span class='inner-submenu'>
                                      		[#SEARCH_INPUT#]
                                      		[#SEARCH_LINK#]
 		    							</span>
                                     </span>
+                                </span>
 	    					</span>
 	    					<span class='center-block'>
 	    					    <span class='logoText'>[#PORTAL#]</span><span class='notificationsCnt'>[#NOTIFICATIONS_CNT#]</span>
 	    					</span>
-	    					<a id='fav-panel-btn' class='fright btn-sidemenu btn-menu-right push-body {$openRightBtn}'>". $pinImg . $pinnedImg . "</a>
+	    					<a id='fav-panel-btn' class='fright btn-sidemenu btn-menu-right {$openRightBtn}'>". $pinImg . $pinnedImg . "</a>
 	    					<span class='fright'>
 		    						<span class='menu-options user-options'>
 		    							" . $img .
     			    					"<span class='menu-holder'>
-			     		   					[#USERLINK#]
-		    								[#CHANGE_MODE#]
-                                            [#LANG_CHANGE#]
-		    								[#SIGNAL#]
-    			    						[#DEBUG_BTN#]
-	    									<div class='divider'></div>
-			     		   					[#SIGN_OUT#]
+    			    					    <span class='inner-submenu'>
+                                                [#USERLINK#]
+                                                [#CHANGE_MODE#]
+                                                [#LANG_CHANGE#]
+                                                [#SIGNAL#]
+                                                [#DEBUG_BTN#]
+                                                <div class='divider'></div>
+                                                [#SIGN_OUT#]
+                                            </span>
 		    							</span>
 	    							</span>
 	     		   			</span>

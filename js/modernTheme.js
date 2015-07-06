@@ -11,10 +11,11 @@ function slidebars(){
  * Създава лентите и задава необходините опции спрямо ширината на страницата
  */
 function initElements() {
-    if($('#main-container > .tab-control > .tab-row').length == 0) {
+    if ($('#main-container > .tab-control > .tab-row').length == 0) {
         $('#framecontentTop').css('border-bottom', '1px solid #ccc');
     }
-
+}
+/*
 	var viewportWidth = $(window).width();
 	if(viewportWidth > 600){
 		 $('.btn-sidemenu').jPushMenu({closeOnClickOutside: false, closeOnClickInside: false});
@@ -37,6 +38,8 @@ function initElements() {
             setViewportWidth(viewportWidth);
         });
 	}
+	*/
+
 function calculateSize(){
     $('.tableHolder').css('height', $(window).height());
     $('.tableHolder .relativeHolder').css('height', $(window).height());
@@ -353,7 +356,6 @@ function onSearchEnter(obj, id, inp)
 			$('#' + id).click();
 		}
     }
-}
 }
 
 function stopScalingOnTouch(){

@@ -299,18 +299,48 @@ body {
 
 .sideBarTitle {
     text-align: center;
-    a {
-        color: #FFF612;
-    }
-
-
+    color: #FFF612;
 }
+
+.bookmarkText {
+    margin: 0 8px;
+    font-size: 0.95em;
+    color: #FFF612;
+}
+.inner-fav-panel {
+    position: relative;
+}
+.narrow .bookmarkText {
+    margin: 0 4px;
+}
+
 .narrow .sidebar-row {
     margin-top: 47px;
     padding: 1px 0 3px !important;
 }
 .narrow .sideBarTitle {
     font-size: 0.85em;
+}
+.bookmarkLink {
+    width: 28px;
+    height: 28px;
+    display: inline-block;
+    position: absolute;
+    top: 10px;
+    opacity: 0.8;
+    transition: opacity 0.5s;
+    &.addBookmarkLink {
+        right: 13px;
+    }
+    &.listBookmarkLink {
+        left: 13px;
+    }
+    img {
+        border-radius: 5px;
+    }
+    &:hover {
+        opacity: 1
+    }
 }
 
 .bookmark-links {
@@ -555,12 +585,15 @@ html,body {
     position: absolute;
     top: 30px;
     right: -2px;
-    padding: 5px;
     z-index: 1000;
     background-color: #ffffff;
     border-radius: 6px;
     border: 1px solid #ccc;
     box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+    .inner-submenu {
+        margin: 5px;
+        display: block;
+    }
     a {
         color: #333 !important;
         display: block;
@@ -940,6 +973,7 @@ div.tab-control.alphabet div.tab-row {
 
 div.tab-control.alphabet div.tab-row .tab{
 	float: left;
+    display: block;
 	background: #F5F5F5;
     padding: 4px 5px;
 	-moz-border-radius: 10px;
