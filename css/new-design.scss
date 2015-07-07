@@ -385,6 +385,18 @@ a.bookmark-external-url {
         border: none;
     }
 }
+@media handheld, only screen and (max-width: 800px) {
+    .tableHolder {
+        margin-left: -200px;
+    }
+    .pulled-right {
+        margin-left: -400px;
+    }
+    .pulled-left {
+        margin-left: 0;
+    }
+}
+
 div.tab-control div.tab-page {
     top: 0;
 }
@@ -416,7 +428,7 @@ html,body {
     height: 100%;
     overflow-y: auto;
 }
-.nonVisible {
+.wide .nonVisible {
     width: 0;
     visibility: hidden;
     .sidemenu {
@@ -660,9 +672,6 @@ html,body {
     margin-top: 2px;
 }
 
-.narrow #main-container {
-	padding: 12px 0 0 0;
-}
 #main-container  div.tab-control div.tab-page {
 	border: none;
 }
@@ -1042,21 +1051,6 @@ div.tab-control.deal-history-tab .tab-row .tab {
     margin: 0 3px 0 0 !important;
     top: 0 !important;
     padding: 5px !important;
-}
-
-.tableHolder {
-    width: 100%;
-}
-@media handheld, only screen and (max-width: 800px) {
-	.narrow  .sidemenu-push-toleft#main-container {
-		margin-left: -170px;
-	}
-    .narrow  .sidemenu-push-toright#main-container {
-        margin-right: -170px;
-    }
-	.narrow .sidemenu-push-toleft #framecontentTop, .narrow .sidemenu-push-toleft .tab-control > .tab-row {
-		left: -170px !important;
-	}
 }
 
 @media handheld, only screen and (max-width: 1280px) {
