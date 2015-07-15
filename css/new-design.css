@@ -370,8 +370,10 @@ a.bookmark-external-url {
  */
 .tableHolder {
   border: none; }
-  .tableHolder td {
-    border: none; }
+  .tableHolder td,
+  .tableHolder th {
+    border: none;
+    padding: 0; }
 
 @media handheld,
 only screen and (max-width: 800px) {

@@ -381,10 +381,12 @@ a.bookmark-external-url {
 /*menu i podmenu*/
 .tableHolder {
     border: none;
-    td {
+    td, th {
         border: none;
+        padding: 0;
     }
 }
+
 @media handheld, only screen and (max-width: 800px) {
     .tableHolder {
         margin-left: -200px;
