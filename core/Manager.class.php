@@ -83,6 +83,36 @@ class core_Manager extends core_Mvc
      *                                                                                      *
      ****************************************************************************************/
     
+
+    /**
+     * Връща линк към подадения обект
+     * 
+     * @param integer $objId
+     * 
+     * @return core_ET
+     */
+    public static function getLinkForObject($objId)
+    {
+        $me = get_called_class();
+        $inst = cls::get($me);
+        
+        if ($objId) {
+            $title = $inst->getTitleForId($objId);
+        } else {
+            $title = $inst->className;
+        }
+        
+        $linkArr = array();
+        
+        if (self::haveRightFor('list', $objId)) {
+            $linkArr = array(get_called_class(), 'list', $objId);
+        }
+        
+        $link = ht::createLink($title, $linkArr);
+        
+        return $link;
+    }
+    
     
     /**
      * Изпълнява заявка за листов изглед на страница от модела
@@ -100,7 +130,9 @@ class core_Manager extends core_Mvc
         // Създаваме обекта $data
         $data = new stdClass();
         $data->action = 'list';
-
+        
+        $data->ListId = Request::get('id', 'int');
+        
         // Създаваме заявката
         $data->query = $this->getQuery();
         
@@ -134,8 +166,10 @@ class core_Manager extends core_Mvc
         // Опаковаме изгледа
         $tpl = $this->renderWrapping($tpl, $data);
         
-        // Записваме, че потребителя е разглеждал този списък
-        $this->log('List: ' . ($data->log ? $data->log : tr($data->title)));
+        if (!Request::get('ajax_mode')) {
+            // Записваме, че потребителя е разглеждал този списък
+            $this->logInfo('List');
+        }
         
         return $tpl;
     }
@@ -210,7 +244,7 @@ class core_Manager extends core_Mvc
         
         $this->delete($data->id);
         
-        $this->log($data->cmd, $id);
+        $this->logInfo($data->cmd, $data->id);
         
         return new Redirect($data->retUrl);
     }
@@ -274,7 +308,7 @@ class core_Manager extends core_Mvc
             $id = $this->save($rec);
             
             // Правим запис в лога
-            $this->log($data->cmd, $id);
+            $this->logInfo($data->cmd, $id);
             
             // Подготвяме адреса, към който трябва да редиректнем,  
             // при успешно записване на данните от формата
@@ -374,6 +408,10 @@ class core_Manager extends core_Mvc
             $data->listFilter = $this->getForm($formParams);
         }
         
+        if ($data->ListId) {
+            $data->query->where($data->ListId);
+        }
+        
         return $data;
     }
     
@@ -448,6 +486,10 @@ class core_Manager extends core_Mvc
     function prepareListTitle_(&$data)
     {
         setIfNot($data->title, $this->title);
+        
+        if ($data->ListId) {
+            $data->title = "Реазултати за запис номер|* {$data->ListId}: |" . $data->title;
+        }
         
         return $data;
     }
@@ -831,12 +873,15 @@ class core_Manager extends core_Mvc
     
     /**
      * Добавя запис в лога
+     * @deprecated
      */
     static function log_($detail, $objectId = NULL, $logKeepDays = NULL)
     {
         if (!$logKeepDays) {
             $logKeepDays = self::$logKeepDays;
         }
+        
+        $className = get_called_class();
         
         core_Logs::add(get_called_class(), $objectId, $detail, $logKeepDays);
     }
@@ -887,7 +932,7 @@ class core_Manager extends core_Mvc
         
         $select = new ET('');
         
-        $this->log("ajaxGetOptions|{$q}");
+        $this->logInfo("ajaxGetOptions", NULL, 7);
         
         $options = $this->fetchOptions($q);
         

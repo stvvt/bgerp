@@ -1029,17 +1029,18 @@ abstract class deals_DealMaster extends deals_DealBase
     					$d = &$details[$index];
     					$d = (object)$d;
     
-    					$d->classId = $p->classId;
+    					$d->classId   = $p->classId;
     					$d->productId = $p->productId;
-    					$d->uomId = $p->uomId;
+    					$d->uomId     = $p->uomId;
     					$d->quantity += $p->quantity;
-    					$d->price = ($d->price) ? ($d->price + $p->price) / 2 : $p->price;
+    					$d->price     = ($d->price) ? ($d->price + $p->price) / 2 : $p->price;
     					if(!empty($d->discount) || !empty($p->discount)){
     						$d->discount = ($d->discount) ? ($d->discount + $p->discount) / 2 : $p->discount;
     					}
     
-    					$info = cls::get($p->classId)->getProductInfo($p->productId, $p->packagingId);
-    					$p->quantityInPack = ($p->packagingId) ? $info->packagingRec->quantity : 1;
+    					$info = cls::get($p->classId)->getProductInfo($p->productId);
+    					$p->quantityInPack = ($info->packagings[$p->packagingId]) ? $info->packagings[$p->packagingId]->quantity : 1;
+    					
     					if(empty($d->packagingId)){
     						$d->packagingId = $p->packagingId;
     						$d->quantityInPack = $p->quantityInPack;
@@ -1184,7 +1185,11 @@ abstract class deals_DealMaster extends deals_DealBase
     {
     	$id = Request::get('id', 'int');
     	expect($rec = $this->fetch($id));
-    	expect($rec->state == 'draft');
+    	
+    	if($rec->state != 'draft'){
+    		return redirect(array($this, 'single', $id), FALSE, 'Договорът вече е активиран');
+    	}
+    	
     	expect(cls::haveInterface('acc_TransactionSourceIntf', $this));
     	expect(acc_plg_Contable::checkPeriod($rec->valior, $error), $error);
     	$curStoreId = store_Stores::getCurrent('id', FALSE);
@@ -1239,12 +1244,12 @@ abstract class deals_DealMaster extends deals_DealBase
     		 
     		// Ако се експедира и има склад, форсира се логване
     		if($options['ship'] && isset($rec->shipmentStoreId) && $rec->shipmentStoreId != $curStoreId){
-    			store_Stores::selectSilent($rec->shipmentStoreId);
+    			store_Stores::selectCurrent($rec->shipmentStoreId);
     		}
     		 
     		// Ако има сметка и се експедира, форсира се логване
     		if($options['pay'] && isset($rec->caseId) && $rec->caseId != $curCaseId){
-    			cash_Cases::selectSilent($rec->caseId);
+    			cash_Cases::selectCurrent($rec->caseId);
     		}
     		 
     		// Контиране на документа
@@ -1316,7 +1321,7 @@ abstract class deals_DealMaster extends deals_DealBase
     		} catch(core_exception_Expect $e){
     			 
     			// Ако има проблем при обновяването
-    			core_Logs::add($this->className, $rec->id, "Проблем при автоматичното приключване на сделка: '{$e->getMessage()}'");
+    			$this->logWarning("Проблем при автоматичното приключване на сделка: '{$e->getMessage()}'", $rec->id);
     		}
     	}
     }
@@ -1345,7 +1350,7 @@ abstract class deals_DealMaster extends deals_DealBase
     		} catch(core_exception_Expect $e){
     
     			// Ако има проблем при извличането се продължава
-    			core_Logs::add($Class, $rec->id, "Проблем при извличането 'bgerp_DealAggregatorIntf': '{$e->getMessage()}'");
+    			$this->logWarning("Проблем при извличането 'bgerp_DealAggregatorIntf': '{$e->getMessage()}'", $rec->id);
     			continue;
     		}
     
@@ -1370,7 +1375,7 @@ abstract class deals_DealMaster extends deals_DealBase
     			} catch(core_exception_Expect $e){
     					
     				// Ако има проблем при извличането се продължава
-    				core_Logs::add($Class, $rec->id, "Несъществуващ платежен план': '{$e->getMessage()}'");
+    				$this->logWarning("Несъществуващ платежен план': '{$e->getMessage()}'", $rec->id);
     				continue;
     			}
     		}
@@ -1391,7 +1396,7 @@ abstract class deals_DealMaster extends deals_DealBase
     		} catch(core_exception_Expect $e){
     
     			// Ако има проблем при обновяването
-    			core_Logs::add($Class, $rec->id, "Проблем при проверката дали е просрочена сделката: '{$e->getMessage()}'");
+    			$this->logWarning("Проблем при проверката дали е просрочена сделката: '{$e->getMessage()}'", $rec->id);
     		}
     	}
     }
@@ -1579,7 +1584,7 @@ abstract class deals_DealMaster extends deals_DealBase
     	$ProductMan = cls::get($pMan);
     	expect($ProductMan->fetchField($productId, 'id'));
     	if(isset($packagingId)){
-    		expect(cat_Packagings::fetchField($packagingId, 'id'));
+    		expect(cat_UoM::fetchField($packagingId, 'id'));
     	}
     	
     	if(isset($notes)){
@@ -1587,8 +1592,8 @@ abstract class deals_DealMaster extends deals_DealBase
     	}
     	
     	// Броя еденици в опаковка, се определя от информацията за продукта
-    	$productInfo = $ProductMan->getProductInfo($productId, $packagingId);
-    	$quantityInPack = isset($packagingId) ? $productInfo->packagingRec->quantity : 1;
+    	$productInfo = $ProductMan->getProductInfo($productId);
+    	$quantityInPack = ($productInfo->packagings[$packagingId]) ? $productInfo->packagings[$packagingId]->quantity : 1;
     	$productManId = $ProductMan->getClassId();
     	
     	// Ако няма цена, опитваме се да я намерим от съответната ценова политика

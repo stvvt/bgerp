@@ -164,7 +164,7 @@ class doc_ThreadRefreshPlg extends core_Plugin
         }
         
         // Добавяме в лога
-        // core_Logs::add($mvc, NULL, 'AJAX refresh thread: ' . $mvc->title, static::$logKeepDays);
+//         $mvc->logInfo("AJAX refresh thread", NULL, self::$logKeepDays);
         
         return FALSE;
     }
@@ -307,25 +307,6 @@ class doc_ThreadRefreshPlg extends core_Plugin
         if ($data->noChanges) {
             
             $res = new ET($res);
-            
-            return FALSE;
-        }
-    }
-    
-    
-    /**
-     * Преди вкарване на записив в лога
-     * 
-     * @param core_Mvc $mvc
-     * @param mixed $res
-     * @param string $detail
-     * @param integer $objectId
-     * @param integer $logKeepDays
-     */
-    static function on_BeforeLog($mvc, &$res, $detail, $objectId = NULL, &$logKeepDays = NULL)
-    {
-        // Ако заявката е по AJAX
-        if (Request::get('ajax_mode')) {
             
             return FALSE;
         }

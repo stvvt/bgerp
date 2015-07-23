@@ -74,7 +74,7 @@ class cams_driver_IpDevice extends core_BaseClass {
     {
         if(!$this->isActive()) {
             $img = imagecreatefromjpeg(dirname(__FILE__) . '/setup.jpg');
-        } else {
+        } else { 
             $url = $this->getPictureUrl();
             $img = core_Url::loadUrl($url);
             
@@ -107,10 +107,10 @@ class cams_driver_IpDevice extends core_BaseClass {
         "{$savePath} {$duration} {$this->width} {$this->height} {$this->FPS} < /dev/null > /dev/null 2>&1 &";
 
         exec($cmd, $arrOutput);
-        $res = implode(',', $arrOutput);
         
         if (isDebug()) {
-        	core_Logs::add($this, $this->id, "Команда: {$cmd} Резултат: {$res}", 5);
+            $res = implode(',', $arrOutput);
+        	log_Data::add('debug', "Команда: {$cmd} Резултат: {$res}", 'cams_driver_IpDevice', NULL, 5);
         }
     }
     
@@ -122,9 +122,12 @@ class cams_driver_IpDevice extends core_BaseClass {
     	$url = $this->getParamsUrl();
     	$res = url::loadURL($url);
 		
-    	if (!$res) return $params;
-    	
     	$resArr = parse_ini_string($res);
+    	
+    	if (!$resArr) {
+    		
+    		return $params;
+    	}
     	
 		$className = cls::getClassName($this);
     	
@@ -175,7 +178,7 @@ class cams_driver_IpDevice extends core_BaseClass {
      * 
      * Връща урл за взимане на снимка от камерата в зависимост от вида и
      */
-	private function getPictureUrl()
+	protected function getPictureUrl()
 	{
 		$className = cls::getClassName($this);
     	
@@ -186,6 +189,10 @@ class cams_driver_IpDevice extends core_BaseClass {
     		break;
     		case "cams_driver_Edimax":
     			$suffix = "/snapshot.jpg";
+    		break;
+    		case "cams_driver_EdimaxIC9000":
+    			//$suffix = "/snapshot.cgi";
+    			 $suffix = "/snapshot.jpg";
     		break;
     	}
 		
@@ -209,8 +216,11 @@ class cams_driver_IpDevice extends core_BaseClass {
     		case "cams_driver_Edimax":
     			$suffix = "/ipcam.sdp"; // за H.264 ->"/ipcam_264.sdp"
     		break;
+    		case "cams_driver_EdimaxIC9000":
+    			$suffix = "/" . $this->normalizeCameraId() . ".{$this->videopass}";
+    		break;
     	}
-		
+
     	return $this->getDeviceUrl('rtsp') . $suffix;
 	}
 	

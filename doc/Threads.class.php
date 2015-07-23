@@ -76,7 +76,13 @@ class doc_Threads extends core_Manager
      */
     var $doWithSelected = 'open=Отваряне,close=Затваряне,restore=Възстановяване,reject=Оттегляне,move=Преместване';
     
+
+    /**
+     * Кешираме достъпа до даден контейнер
+     */
+    var $haveRightForSingle = array();
     
+
     /**
      * Данните на адресата, с най - много попълнени полета
      */
@@ -133,6 +139,38 @@ class doc_Threads extends core_Manager
         $this->setDbIndex('folderId');
         
         $this->setDbIndex('firstContainerId');
+    }
+    
+    
+    /**
+     * Връща линк към подадения обект
+     * 
+     * @param integer $objId
+     * 
+     * @return core_ET
+     */
+    public static function getLinkForObject($objId)
+    {
+        if (doc_Threads::haveRightFor('single', $objId)) {
+            
+            $fistContainerId = self::fetchField($objId, 'firstContainerId');
+            
+            return doc_Containers::getLinkForObject($fistContainerId);
+        }
+    }
+    
+    
+    /**
+     * 
+     * 
+     * @param integer $id
+     * @param boolean $escape
+     */
+    public static function getTitleForId_($id, $escaped = TRUE)
+    {
+        $fistContainerId = self::fetchField($id, 'firstContainerId');
+        
+        return doc_Containers::getTitleForId_($fistContainerId);
     }
     
     
@@ -307,19 +345,23 @@ class doc_Threads extends core_Manager
     function doRejectOrRestore($act)
     {
         if($selected = Request::get('Selected')) {
+            Debug::log('Selected = ' . $selected);
             $selArr = arr::make($selected);
             
             foreach($selArr as $id) {
                 if($this->haveRightFor('single', $id)) {
-                    Request::push(array('id' => $id, 'Selected' => FALSE));
+                    $this->haveRightForSingle[$id] = TRUE;
+                    Request::push(array('id' => $id, 'Selected' => FALSE), $act . '/' . $id);
                     $res = Request::forward();
-                    Request::pop();
+                    Request::pop($act . '/' . $id);
                 }
-            }
+            } 
         } else {
             expect($id = Request::get('id', 'int'));
             expect($rec = $this->fetch($id));
-            $this->requireRightFor('single', $rec);
+            if(!$this->haveRightForSingle[$id]) {
+                $this->requireRightFor('single', $rec);
+            }
             $fDoc = doc_Containers::getDocument($rec->firstContainerId);
             
             Request::push(array('id' => $fDoc->that, 'Ctr' => $fDoc->className, 'Act' => $act));
@@ -1436,7 +1478,7 @@ class doc_Threads extends core_Manager
         
         $this->updateThread($rec->id);
         
-        $this->log('Отвори нишка', $id);
+        $this->logInfo('Отвори нишка', $id);
         
         return new Redirect(array('doc_Containers', 'list', 'threadId' => $id));
     }
@@ -1472,7 +1514,7 @@ class doc_Threads extends core_Manager
         
         $this->updateThread($rec->id);
         
-        $this->log('Затвори нишка', $id);
+        $this->logInfo('Затвори нишка', $id);
         
         return new Redirect(array('doc_Containers', 'list', 'threadId' => $id));
     }

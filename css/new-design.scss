@@ -986,7 +986,6 @@ div.tab-control.alphabet div.tab-row {
 
 div.tab-control.alphabet div.tab-row .tab{
 	float: left;
-    display: block;
 	background: #F5F5F5;
     padding: 4px 5px;
 	-moz-border-radius: 10px;
@@ -1039,6 +1038,10 @@ div.richEdit div.richedit-toolbar {
 	display: block;
 }
 
+div.statuses-message {
+    margin: 30px auto 0px;
+}
+
 select.tab-control, select.tab-control option {
     font-size: 0.9em;
     padding-top: 0;
@@ -1055,6 +1058,18 @@ div.tab-control.deal-history-tab .tab-row .tab {
     margin: 0 3px 0 0 !important;
     top: 0 !important;
     padding: 5px !important;
+}
+
+@media handheld, only screen and (max-width: 800px) {
+	.narrow  .sidemenu-push-toleft#main-container {
+		margin-left: -170px;
+	}
+    .narrow  .sidemenu-push-toright#main-container {
+        margin-right: -170px;
+    }
+	.narrow .sidemenu-push-toleft #framecontentTop, .narrow .sidemenu-push-toleft .tab-control > .tab-row {
+		left: -170px !important;
+	}
 }
 
 @media handheld, only screen and (max-width: 1280px) {

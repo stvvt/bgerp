@@ -745,7 +745,7 @@ class core_Packs extends core_Manager
                 return "<h4>Невъзможност да се инсталира <span class=\"debug-error\">{$pack}</span>. " .
             		"Липсва <span class=\"debug-error\">Setup</span> клас.</h4>";
             } else {
-                return "<span class='debug-error'>Грешка при инсталиране на пеката '{$pack}'.</span>";
+                return "<span class='debug-error'>Грешка при инсталиране на пакета '{$pack}'.</span>";
             }
         }
         
@@ -1112,7 +1112,7 @@ class core_Packs extends core_Manager
             $id = self::setConfig($packName, $data);
         
             // Правим запис в лога
-            $this->log($data->cmd, $rec->id, "Промяна на конфигурацията на пакет {$packName}");
+            $this->logInfo("Промяна на конфигурацията на пакет", $rec->id);
             
             return new Redirect($retUrl);
         }

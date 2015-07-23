@@ -64,7 +64,7 @@ class cat_UoM extends core_Manager
     /**
      * Полета за лист изгледа
      */
-    var $listFields = "id,name,shortName=Съкращение->Българско,sysId=Съкращение->Международно,state";
+    var $listFields = "id,name,shortName=Съкращение->Българско,sysId=Съкращение->Международно,state,round=Точност,showContents";
     
     
     /**
@@ -72,15 +72,113 @@ class cat_UoM extends core_Manager
      */
     function description()
     {
-        $this->FLD('name', 'varchar(36)', 'caption=Мярка, export,translate');
-        $this->FLD('shortName', 'varchar(12)', 'caption=Съкращение, export,translate');
+        $this->FLD('name', 'varchar(36)', 'caption=Мярка, export,translate,mandatory');
+        $this->FLD('shortName', 'varchar(12)', 'caption=Съкращение, export,translate,mandatory');
+        $this->FLD('type', 'enum(uom=Мярка,packaging=Опаковка)', 'notNull,value=uom,caption=Тип,silent,input=hidden');
         $this->FLD('baseUnitId', 'key(mvc=cat_UoM, select=name,allowEmpty)', 'caption=Базова мярка, export');
         $this->FLD('baseUnitRatio', 'double', 'caption=Коефициент, export');
         $this->FLD('sysId', 'varchar', 'caption=System Id,input=hidden');
         $this->FLD('sinonims', 'varchar(255)', 'caption=Синоними');
+        $this->FLD('showContents', 'enum(yes=Показване,no=Скриване)', 'caption=Показване в документи->К-во в опаковка');
+        $this->FLD('round', 'int', 'caption=Точност след десетичната запетая->Цифри');
         
         $this->setDbUnique('name');
         $this->setDbUnique('shortName');
+    }
+    
+    
+    /**
+     * Връща опции с опаковките
+     */
+    static function getPackagingOptions()
+    {
+    	$options = cls::get(get_called_class())->makeArray4Select('name', "#type = 'packaging' AND state NOT IN ('closed')");
+    	
+    	return $options;
+    }
+    
+    
+    /**
+     * Връща опции с мерките
+     */
+    static function getUomOptions()
+    {
+    	$options = cls::get(get_called_class())->makeArray4Select('name', "#type = 'uom' AND state NOT IN ('closed')");
+    	 
+    	return $options;
+    }
+    
+    
+    /**
+     * Подготовка на филтър формата
+     */
+    protected static function on_AfterPrepareListFilter($mvc, &$data)
+    {
+    	$type = core_Request::get('type', 'enum(uom,packaging)');
+    	if($type == 'packaging'){
+    		$mvc->currentTab = 'Мерки->Опаковки';
+    		$mvc->title = 'Опаковки';
+    		$data->listFields['name'] = 'Опаковка';
+    	} else {
+    		$mvc->currentTab = 'Мерки->Мерки';
+    	}
+    	
+    	$data->query->where(array("#type = '[#1#]'", $type));
+    }
+    
+    
+    /**
+     * Ф-я закръгляща количество спрямо основната мярка на даден артикул, Ако е пдоадена опаковка
+     * спрямо нея
+     * 
+     * @param double $quantity - к-то което ще закръгляме
+     * @param int $productId - ид на артикула
+     * @param int $packagingId - ид на опаковка
+     * @return double - закръгленото количество
+     */
+    public static function round($quantity, $productId, $packagingId = NULL)
+    {
+    	// Коя е основната мярка на артикула
+    	$uomId = cat_Products::getProductInfo($productId)->productRec->measureId;
+    	
+    	if(isset($packagingId)){
+    		$packRound = cat_Packagings::fetchField($packagingId, 'round');
+    		if(isset($packRound)){
+    			$round = $packRound;
+    		} else {
+    			$round = 0;
+    		}
+    	} else {
+    		// Имали зададено закръгляне
+    		$round = static::fetchField($uomId, 'round');
+    	}
+    	
+    	// Ако няма
+    	if(!isset($round)){
+    		$uomRec = static::fetch($uomId);
+    		
+    		// Имали основна мярка върху която да стъпим
+    		if($uomRec->baseUnitId){
+    			
+    			/*
+    			 * Ако има базова мярка, тогава да е спрямо точността на базовата мярка. 
+    			 * Например ако базовата мярка е килограм и имаме нова мярка - грам, която 
+    			 * е 1/1000 от базовата, то точността по подразбиране е 3/3 = 1, където числителя 
+    			 * е точността на мярката килограм, а в знаменателя - log(1000).
+    			 */
+    			$baseRound = static::fetchField($uomRec->baseUnitId, 'round');
+    			$round = $baseRound / log10(pow($uomRec->baseUnitRatio, -1));
+    			$round = abs($round);
+    		} else {
+    			
+    			// Ако няма базова мярка и няма зададено закръгляне значи е 0
+    			$round = 0;
+    		}
+    	}
+    	
+    	$res = round($quantity, $round);
+    	
+    	return $res;
     }
     
     
@@ -221,7 +319,9 @@ class cat_UoM extends core_Manager
 	    	3 => "baseUnitRatio",
 	    	4 => "state",
 	    	5 => "sysId",
-	    	6 => "sinonims");
+	    	6 => "sinonims",
+    		7 => "round",
+    		8 => "type");
     	
     	$cntObj = csv_Lib::importOnce($mvc, $file, $fields);
     	$res .= $cntObj->html;
@@ -317,5 +417,26 @@ class cat_UoM extends core_Manager
         $all[$mId] = ($verbal) ? $Double->toVerbal($all[$mId]) : $all[$mId];
         
         return ($asObject) ? (object)(array('value' => $all[$uomId], 'measure' => $mId)) : $all[$uomId] . " " . static::getShortName($mId);
+    }
+    
+    
+    /**
+     * Извиква се след подготовката на toolbar-а за табличния изглед
+     */
+    protected static function on_AfterPrepareListToolbar($mvc, &$data)
+    {
+    	$data->toolbar->removeBtn('btnAdd');
+    	$data->toolbar->addBtn('Нов запис', array($mvc, 'add', 'type' => Request::get('type', 'enum(uom,packaging)')), 'ef_icon=img/16/star_2.png,title=Добавяне на нова мярка');
+    }
+    
+    
+    /**
+     * Преди показване на форма за добавяне/промяна
+     */
+    public static function on_AfterPrepareEditForm($mvc, &$data)
+    {
+    	if($data->form->rec->type == 'packaging'){
+    		$data->form->setField('name', 'caption=Опаковка');
+    	}
     }
 }

@@ -11,8 +11,14 @@
  * @license   GPL 3
  * @since     v 0.1
  */
-class logs_Referer extends core_Manager
+class log_Referer extends core_Master
 {
+    
+    
+    /**
+     * За конвертиране на съществуващи MySQL таблици от предишни версии
+     */
+    public $oldClassName = 'logs_Referer';
     
     
     /**
@@ -58,9 +64,15 @@ class logs_Referer extends core_Manager
     
     
     /**
+     * Кой има право да изтрива?
+     */
+    public $canSingle = 'admin';
+    
+    
+    /**
      * Плъгини за зареждане
      */
-    public $loadList = 'plg_SystemWrapper, logs_Wrapper';
+    public $loadList = 'plg_SystemWrapper, log_Wrapper';
     
     
     /**
@@ -68,10 +80,12 @@ class logs_Referer extends core_Manager
      */
     public function description()
     {
-         $this->FLD('ipId', 'key(mvc=logs_Ips, select=ip)', 'caption=IP');
-         $this->FLD('brId', 'key(mvc=logs_Browsers, select=brid)', 'caption=Браузър');
+         $this->FLD('ipId', 'key(mvc=log_Ips, select=ip)', 'caption=IP');
+         $this->FLD('brId', 'key(mvc=log_Browsers, select=brid)', 'caption=Браузър');
          $this->FLD('time', 'int', 'caption=Време');
-         $this->FLD('ref', 'varchar', 'caption=Реферер');
+         $this->FLD('ref', 'text', 'caption=Реферер');
+         
+         $this->setDbUnique('ipId, brId, time');
     }
     
     
@@ -91,11 +105,11 @@ class logs_Referer extends core_Manager
         if (!$referer) return ;
         
         if (!isset($ipId)) {
-            $ipId = logs_Ips::getIpId();
+            $ipId = log_Ips::getIpId();
         }
         
         if (!isset($bridId)) {
-            $bridId = logs_Browsers::getBridId();
+            $bridId = log_Browsers::getBridId();
         }
         
         if (!isset($time)) {
@@ -108,7 +122,46 @@ class logs_Referer extends core_Manager
         $rec->time = $time;
         $rec->ref = $referer;
         
-        return self::save($rec);
+        return self::save($rec, NULL, 'IGNORE');
+    }
+    
+    
+    /**
+     * Връща записа за реферера
+     * 
+     * @param integer $ipId
+     * @param integer $bridId
+     * @param integer $time
+     * 
+     * @return object|FALSE
+     */
+    public static function getRefRec($ipId, $bridId, $time)
+    {
+        $rec = self::fetch(array("#ipId = '[#1#]' AND #brId = '[#2#]' AND #time = '[#3#]'", $ipId, $bridId, $time));
+        
+        return $rec;
+    }
+    
+    
+    /**
+     * Изтрива записа за реферера
+     * 
+     * @param integer $ipId
+     * @param integer $bridId
+     * @param integer $time
+     * @param boolean $check
+     * 
+     * @return integer
+     */
+    public static function delRefRec($ipId, $bridId, $time, $check = TRUE)
+    {
+        if ($check) {
+            if (log_Data::fetch(array("#ipId = '[#1#]' AND #brId = '[#2#]' AND #time = '[#3#]'", $ipId, $bridId, $time))) return 0;
+        }
+        
+        $delCnt = self::delete(array("#ipId = '[#1#]' AND #brId = '[#2#]' AND #time = '[#3#]'", $ipId, $bridId, $time));
+        
+        return $delCnt;
     }
     
     
@@ -121,11 +174,24 @@ class logs_Referer extends core_Manager
      */
     public static function on_AfterRecToVerbal($mvc, &$row, $rec)
     {
-        $row->brId = logs_Browsers::getLinkFromId($rec->brId);
+        $row->brId = log_Browsers::getLinkFromId($rec->brId);
         
         if ($rec->time) {
             $time = dt::timestamp2Mysql($rec->time);
             $row->time = dt::mysql2verbal($time, 'smartTime');
         }
+    }
+    
+    
+    /**
+     * Филтър на on_AfterPrepareListFilter()
+     * Малко манипулации след подготвянето на формата за филтриране
+     *
+     * @param core_Mvc $mvc
+     * @param stdClass $data
+     */
+    static function on_AfterPrepareListFilter($mvc, $data)
+    {
+        $data->query->orderBy("time", "DESC");
     }
 }

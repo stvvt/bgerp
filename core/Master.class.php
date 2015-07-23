@@ -39,6 +39,42 @@ class core_Master extends core_Manager
     
     
     /**
+     * Връща линк към подадения обект
+     * 
+     * @param integer $objId
+     * 
+     * @return core_ET
+     */
+    public static function getLinkForObject($objId)
+    {
+        $me = get_called_class();
+        $inst = cls::get($me);
+        
+        if ($objId) {
+            $title = $inst->getTitleForId($objId);
+        } else {
+            $title = $inst->className;
+        }
+        
+        $linkArr = array();
+        
+        if (self::haveRightFor('single', $objId)) {
+            if ($objId) {
+                $linkArr = array(get_called_class(), 'single', $objId);
+            } else {
+                if (self::haveRightFor('list')) {
+                    $linkArr = array(get_called_class(), 'list');
+                }
+            }
+        }
+        
+        $link = ht::createLink($title, $linkArr);
+        
+        return $link;
+    }
+    
+    
+    /**
      * Връща единичния изглед на обекта
      */
     function act_Single()
@@ -70,8 +106,10 @@ class core_Master extends core_Manager
         // Опаковаме изгледа
         $tpl = $this->renderWrapping($tpl, $data);
         
-        // Записваме, че потребителя е разглеждал този списък
-        $this->log('Single: ' . ($data->log ? $data->log : tr($data->title)), $id);
+        if (!Request::get('ajax_mode')) {
+            // Записваме, че потребителя е разглеждал този списък
+            $this->logInfo('Single', $id);
+        }
         
         return $tpl;
     }
@@ -148,7 +186,7 @@ class core_Master extends core_Manager
             }
             
             // Добавяме в лога
-            static::log("Преизчисляване на полетата на мастера", $data->rec->id, 1);
+            self::logInfo("Преизчисляване на полетата на мастера", $data->rec->id, 7);
         }
         
         return $data;

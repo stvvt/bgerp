@@ -11,8 +11,14 @@
  * @license   GPL 3
  * @since     v 0.1
  */
-class logs_Ips extends core_Manager
+class log_Ips extends core_Manager
 {
+    
+    
+    /**
+     * За конвертиране на съществуващи MySQL таблици от предишни версии
+     */
+    public $oldClassName = 'logs_Ips';
     
     
     /**
@@ -24,7 +30,7 @@ class logs_Ips extends core_Manager
     /**
      * Кой има право да го чете?
      */
-    public $canRead = 'admin';
+    public $canRead = 'debug';
     
     
     /**
@@ -42,13 +48,13 @@ class logs_Ips extends core_Manager
     /**
      * Кой има право да го види?
      */
-    public $canView = 'admin';
+    public $canView = 'debug';
     
     
     /**
      * Кой може да го разглежда?
      */
-    public $canList = 'admin';
+    public $canList = 'debug';
     
     
     /**
@@ -60,7 +66,7 @@ class logs_Ips extends core_Manager
     /**
      * Плъгини за зареждане
      */
-    public $loadList = 'plg_SystemWrapper, logs_Wrapper';
+    public $loadList = 'plg_SystemWrapper, log_Wrapper';
     
     
     /**

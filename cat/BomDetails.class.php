@@ -26,7 +26,7 @@ class cat_BomDetails extends doc_Detail
     /**
      * Заглавие
      */
-    var $singleTitle = "Ресурс";
+    var $singleTitle = "Материал";
     
     
     /**
@@ -113,7 +113,11 @@ class cat_BomDetails extends doc_Detail
     function description()
     {
     	$this->FLD('bomId', 'key(mvc=cat_Boms)', 'column=none,input=hidden,silent');
-    	$this->FLD("resourceId", 'key(mvc=planning_Resources,select=title,allowEmpty)', 'caption=Ресурс,mandatory,silent,refreshForm');
+    	$this->FLD("resourceId", 'key(mvc=cat_Products,select=name,allowEmpty)', 'caption=Материал,mandatory,silent,refreshForm');
+    	
+    	$this->FLD('packagingId', 'key(mvc=cat_UoM, select=shortName, select2MinItems=0)', 'caption=Мярка','tdClass=small-field,silent,removeAndRefreshForm=quantityInPack,mandatory');
+    	$this->FLD('quantityInPack', 'double(smartRound)', 'input=none,notNull,value=1');
+    	
     	$this->FLD('stageId', 'key(mvc=planning_Stages,allowEmpty,select=name)', 'caption=Етап');
     	$this->FLD('type', 'enum(input=Влагане,pop=Отпадък)', 'caption=Действие,silent,input=hidden');
     	
@@ -143,8 +147,14 @@ class cat_BomDetails extends doc_Detail
     public static function on_AfterPrepareEditForm($mvc, &$data)
     {
     	$form = &$data->form;
-    	$typeCaption = ($form->rec->type == 'input') ? 'вложим' : 'отпаден';
-    	$form->title = "|Добавяне на|* {$typeCaption} |ресурс към|* <b>|{$mvc->Master->singleTitle}|* №{$form->rec->bomId}<b>";
+    	$typeCaption = ($form->rec->type == 'input') ? 'материал' : 'отпадък';
+    	$action = ($form->rec->id) ? 'Редактиране' : 'Добавяне';
+    	$form->title = "|{$action}|* на {$typeCaption} |към|* <b>|{$mvc->Master->singleTitle}|* №{$form->rec->bomId}<b>";
+    	
+    	// Добавяме всички вложими артикули за избор
+    	$products = cat_Products::getByProperty('canConvert');
+    	unset($products[$data->masterRec->productId]);
+    	$form->setOptions('resourceId', $products);
     	
     	$form->setDefault('type', 'input');
     	$quantity = $data->masterRec->quantity;
@@ -153,6 +163,45 @@ class cat_BomDetails extends doc_Detail
     		
     	$propCaption = "|За|* |{$quantity}|* {$shortUom}";
     	$form->setField('propQuantity', "caption={$propCaption}");
+    }
+    
+    
+    /**
+     * Търси в дърво, дали даден обект не е баща на някой от бащите на друг обект
+     *
+     * @param int $objectId - ид на текущия обект
+     * @param int $needle - ид на обекта който търсим
+     * @param array $notAllowed - списък със забранените обекти
+     * @param array $path
+     * @return void
+     */
+    private function findNotAllowedProducts($objectId, $needle, &$notAllowed, $path = array())
+    {
+    	// Добавяме текущия продукт
+    	$path[$objectId] = $objectId;
+    
+    	// Ако стигнем до началния, прекратяваме рекурсията
+    	if($objectId == $needle){
+    		foreach($path as $p){
+    
+    			// За всеки продукт в пътя до намерения ние го
+    			// добавяме в масива notAllowed, ако той, вече не е там
+    			$notAllowed[$p] = $p;
+    		}
+    		return;
+    	}
+    	
+    	// Имали артикула рецепта
+    	if($bomId = cat_Products::getLastActiveBom($objectId)){
+    		$bomInfo = cat_Boms::getResourceInfo($bomId);
+    		
+    		// За всеки продукт от нея проверяваме дали не съдържа търсения продукт
+    		if(count($bomInfo['resources'])){
+    			foreach ($bomInfo['resources'] as $res){
+    				$this->findNotAllowedProducts($res->productId, $needle, $notAllowed, $path);
+    			}
+    		}
+    	}
     }
     
     
@@ -168,24 +217,40 @@ class cat_BomDetails extends doc_Detail
     	
     	// Ако има избран ресурс, добавяме му мярката до полетата за количества
     	if(isset($rec->resourceId)){
-    		if($uomId = planning_Resources::fetchField($rec->resourceId, 'measureId')){
-    			$uomName = cat_UoM::getShortName($uomId);
-    	
-    			$form->setField('baseQuantity', "unit={$uomName}");
-    			$form->setField('propQuantity', "unit={$uomName}");
-    		}
+    		
+    		$pInfo = cat_Products::getProductInfo($rec->resourceId);
+    		$form->setDefault('measureId', $pInfo->productRec->measureId);
+    		$shortName = cat_UoM::getShortName($rec->measureId);
+    		$form->setField('baseQuantity', "unit={$shortName}");
+    		$form->setField('propQuantity', "unit={$shortName}");
+
+    		$packs = cls::get('cat_Products')->getPacks($rec->resourceId);
+    		$form->setOptions('packagingId', $packs);
+    	} else {
+    		$form->setReadOnly('packagingId');
     	}
     	
     	// Проверяваме дали е въведено поне едно количество
     	if($form->isSubmitted()){
+    		
+    		if(isset($rec->resourceId)){
+    			
+    			// Ако е избран артикул проверяваме дали артикула от рецептата не се съдържа в него
+    			$masterProductId = cat_Boms::fetchField($rec->bomId, 'productId');
+    			$productVerbal = cat_Products::getTitleById($masterProductId);
+    			
+    			$notAllowed = array();
+    			$mvc->findNotAllowedProducts($rec->resourceId, $masterProductId, $notAllowed);
+    			if(isset($notAllowed[$rec->resourceId])){
+    				$form->setError('resourceId', "Материала не може да бъде избран, защото в рецептата на някой от материалите му се съдържа|* <b>{$productVerbal}</b>");
+    			}
+    		}
+    		
+    		// Ако добавяме отпадък, искаме да има себестойност
     		if($rec->type == 'pop'){
-    			$rType = planning_Resources::fetchField($rec->resourceId, 'type');
-    			if($rType != 'material'){
-    				$form->setError('resourceId,type', 'Отпадният ресурс трябва да е материал');
-    			} else {
-    				if(!planning_Resources::fetchField($rec->resourceId, 'selfValue')){
-    					$form->setError('resourceId', 'Отпадният ресурс няма себестойност');
-    				}
+    			$selfValue = planning_ObjectResources::getSelfValue($rec->resourceId);
+    			if(!isset($selfValue)){
+    				$form->setError('resourceId', 'Отпадакът няма себестойност');
     			}
     		}
     		
@@ -193,6 +258,8 @@ class cat_BomDetails extends doc_Detail
     		if(empty($rec->baseQuantity) && empty($rec->propQuantity)){
     			$form->setError('baseQuantity,propQuantity', 'Трябва да е въведено поне едно количество');
     		}
+    		
+    		$rec->quantityInPack = ($pInfo->packagings[$rec->packagingId]) ? $pInfo->packagings[$rec->packagingId]->quantity : 1;
     	}
     }
     
@@ -202,15 +269,17 @@ class cat_BomDetails extends doc_Detail
      */
     public static function on_AfterRecToVerbal($mvc, &$row, $rec)
     {
-    	$row->resourceId = planning_Resources::getShortHyperlink($rec->resourceId);
-    	$measureId = planning_Resources::fetchField($rec->resourceId, 'measureId');
-    	$row->measureId = cat_UoM::getTitleById($measureId);
+    	$row->resourceId = cat_Products::getShortHyperlink($rec->resourceId);
+    	$row->measureId = cat_UoM::getTitleById($rec->packagingId);
+    	
+    	// Показваме подробната информация за опаковката при нужда
+    	deals_Helper::getPackInfo($row->measureId, $rec->resourceId, $rec->packagingId, $rec->quantityInPack);
     	
     	$row->ROW_ATTR['class'] = ($rec->type != 'input') ? 'row-removed' : 'row-added';
     	$row->ROW_ATTR['title'] = ($rec->type != 'input') ? tr('Отпадък') : NULL;
     	
     	if(empty($rec->stageId)){
-    		$row->stageId = tr("без етап");
+    		$row->stageId = tr("Без етап");
     	}
     }
     
@@ -222,8 +291,8 @@ class cat_BomDetails extends doc_Detail
     {
     	$data->toolbar->removeBtn('btnAdd');
     	if($mvc->haveRightFor('add', (object)array('bomId' => $data->masterId))){
-    		$data->toolbar->addBtn('Ресурс', array($mvc, 'add', 'bomId' => $data->masterId, 'ret_url' => TRUE, 'type' => 'input'), NULL, "title=Добавяне на ресурс към рецептата,ef_icon=img/16/star_2.png");
-    		$data->toolbar->addBtn('Отпадък', array($mvc, 'add', 'bomId' => $data->masterId, 'ret_url' => TRUE, 'type' => 'pop'), NULL, "title=Добавяне на отпаден ресурс към рецептата,ef_icon=img/16/star_2.png");
+    		$data->toolbar->addBtn('Материал', array($mvc, 'add', 'bomId' => $data->masterId, 'ret_url' => TRUE, 'type' => 'input'), NULL, "title=Добавяне на материал,ef_icon=img/16/package.png");
+    		$data->toolbar->addBtn('Отпадък', array($mvc, 'add', 'bomId' => $data->masterId, 'ret_url' => TRUE, 'type' => 'pop'), NULL, "title=Добавяне на отпадък,ef_icon=img/16/package.png");
     	}
     }
     

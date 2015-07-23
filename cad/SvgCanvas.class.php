@@ -37,7 +37,7 @@ class cad_SvgCanvas extends core_BaseClass {
 
      */
 
-	function __construct($width = 210, $height = 297, $pixPerMm = 1000, $paddingTop = 10, $paddingRight = 10, $paddingBottom = 10, $paddingLeft = 10)
+	function __construct($width = 210, $height = 297, $pixPerMm = 10, $paddingTop = 10, $paddingRight = 10, $paddingBottom = 10, $paddingLeft = 10)
     {   
         // Отношение между милиметри и svg пиксели
         $this->pixPerMm = $pixPerMm;
@@ -211,7 +211,11 @@ class cad_SvgCanvas extends core_BaseClass {
         $this->setCP($x2, $y2, $absolute);
 		$this->setCP($x, $y, $absolute);
 	}
-
+    
+    
+    /**
+     * Чертае закръгляне до посочената точка
+     */
     function roundTo($x1, $y1, $x, $y, $r, $absolute = FALSE)
     {
         // Вземаме абсолютните координати на началната

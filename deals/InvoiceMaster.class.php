@@ -404,7 +404,20 @@ abstract class deals_InvoiceMaster extends core_Master
     {
         $rec = $this->fetch($id);
 		$row = new stdClass();
+		
+		$template = $this->getTemplate($id);
+		$lang = doc_TplManager::fetchField($template, 'lang');
+		
+		if($lang){
+			core_Lg::push($lang);
+		}
+		
         $row->title = static::getRecTitle($rec);
+        
+        if($lang){
+        	core_Lg::pop();
+        }
+        
         $row->author = $this->getVerbal($rec, 'createdBy');
         $row->authorId = $rec->createdBy;
         $row->state = $rec->state;
@@ -588,13 +601,9 @@ abstract class deals_InvoiceMaster extends core_Master
    {
 	   	$dRec = clone $product;
 	   	$index = $product->classId . "|" . $product->productId;
-	   	if($packs[$index]){
-	   		$packQuantity = $packs[$index]->inPack;
-	   		$dRec->packagingId = $packs[$index]->packagingId;
-	   	} else {
-	   		$packQuantity = 1;
-	   		$dRec->packagingId = NULL;
-	   	}
+	   	
+	   	$packQuantity = $packs[$index]->inPack;
+	   	$dRec->packagingId = $packs[$index]->packagingId;
 	   	
 	   	$Detail = $mvc->mainDetail;
 	   	$dRec->{$mvc->$Detail->masterKey} = $rec->id;
@@ -892,11 +901,11 @@ abstract class deals_InvoiceMaster extends core_Master
     		}
     	
     		$userRec = core_Users::fetch($rec->createdBy);
-    		$row->username = core_Users::recToVerbal($userRec, 'names')->names;
+    		$row->username = core_Lg::transliterate(core_Users::recToVerbal($userRec, 'names')->names);
     	
-    		if($rec->type != 'invoice'){
+    		if($rec->type != 'invoice' && !($mvc instanceof sales_Proformas)){
     			$originRec = $mvc->getOrigin($rec)->fetch();
-    			$originRow = $mvc->recToVerbal($originRec, 'number,date');
+    			$originRow = $mvc->recToVerbal($originRec);
     			$row->originInv = $originRow->number;
     			$row->originInvDate = $originRow->date;
     		}

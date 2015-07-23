@@ -11,8 +11,14 @@
  * @license   GPL 3
  * @since     v 0.1
  */
-class logs_Classes extends core_Manager
+class log_Classes extends core_Manager
 {
+    
+    
+    /**
+     * За конвертиране на съществуващи MySQL таблици от предишни версии
+     */
+    public $oldClassName = 'logs_Classes';
     
     
     /**
@@ -24,7 +30,7 @@ class logs_Classes extends core_Manager
     /**
      * Кой има право да го чете?
      */
-    public $canRead = 'admin';
+    public $canRead = 'debug';
     
     
     /**
@@ -42,13 +48,13 @@ class logs_Classes extends core_Manager
     /**
      * Кой има право да го види?
      */
-    public $canView = 'admin';
+    public $canView = 'debug';
     
     
     /**
      * Кой може да го разглежда?
      */
-    public $canList = 'admin';
+    public $canList = 'debug';
     
     
     /**
@@ -60,7 +66,7 @@ class logs_Classes extends core_Manager
     /**
      * Плъгини за зареждане
      */
-    public $loadList = 'plg_SystemWrapper, logs_Wrapper';
+    public $loadList = 'plg_SystemWrapper, log_Wrapper';
     
     
     /**
@@ -85,16 +91,17 @@ class logs_Classes extends core_Manager
      * Връща crc32 стойността на стринга
      * 
      * @param string $action
+     * @param boolean $autoSave
      * 
      * @return integer
      */
-    public static function getClassCrc($className)
+    public static function getClassCrc($className, $autoSave = TRUE)
     {
         if (!$className) return ;
         
         $classCrc = crc32($className);
         
-        if (!self::$classArr[$classCrc]) {
+        if (!self::$classArr[$classCrc] && $autoSave) {
             self::$classArr[$classCrc] = $className;
         }
         
@@ -103,7 +110,7 @@ class logs_Classes extends core_Manager
     
     
     /**
-     * Записва масива със crc32 и екшуъна
+     * Записва масива със crc32 и класа
      */
     public static function saveActions()
     {
@@ -114,5 +121,25 @@ class logs_Classes extends core_Manager
            
            self::save($rec, NULL, 'IGNORE');
        }
+    }
+    
+    
+    /**
+     * Връща името на класа от подадената crc стойност
+     * 
+     * @param integer $crc
+     * 
+     * @return string
+     */
+    public static function getClassFromCrc($crc)
+    {
+        static $crcClassArr = array();
+        
+        if (!isset($crcClassArr[$crc])) {
+            $rec = self::fetch(array("#crc = '[#1#]'", $crc));
+            $crcClassArr[$crc] = $rec->class;
+        }
+        
+        return $crcClassArr[$crc];
     }
 }

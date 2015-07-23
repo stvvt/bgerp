@@ -222,7 +222,11 @@ class eshop_Products extends core_Master
         while($pRec = $pQuery->fetch("#state = 'active' AND #groupId = {$data->groupId}")) {
             $data->recs[] = $pRec;
             $pRow = $data->rows[] = self::recToVerbal($pRec, 'name,info,image,code,coMoq');
-            $img = new thumb_Img($pRec->image, 120, 120);
+            $image = $pRec->image;
+            $tact = abs(crc32($pRec->id . round(time()/(24*60*60+537)))) % 3;
+            if($tact == 2 && $pRec->image2) $image = $pRec->image2;
+            if($tact == 1 && $pRec->image1) $image = $pRec->image1;
+            $img = new thumb_Img($image, 120, 120);
             $pRow->image = $img->createImg(array('class' => 'eshop-product-image'));
             if(self::haveRightFor('edit', $pRec)) {
                 $pRec->editUrl = array('eshop_Products', 'edit', $pRec->id, 'ret_url' => TRUE);
@@ -295,12 +299,22 @@ class eshop_Products extends core_Master
 
 
     /**
-     *
+     * Показва единичен изглед за продукт във външната част
      */
     function act_Show()
     {
         $data = new stdClass();
         $data->productId = Request::get('id', 'int');
+
+        if(!$data->productId) {
+            $opt = cms_Content::getMenuOpt('eshop_Groups');
+            if(count($opt)) {
+                redirect(array('cms_Content', 'Show', key($opt)));
+            } else {
+                redirect(array('cms_Content', 'Show'));
+            }
+        }
+
         $data->rec = self::fetch($data->productId);
         $data->groups = new stdClass();
         $data->groups->groupId = $data->rec->groupId;
@@ -347,24 +361,24 @@ class eshop_Products extends core_Master
 
         $data->row = $this->recToVerbal($data->rec);
         if($data->rec->image) {
-            $data->row->image = fancybox_Fancybox::getImage($data->rec->image, array(120, 120), array(600, 600), $data->row->name); 
+            $data->row->image = fancybox_Fancybox::getImage($data->rec->image, array(160, 160), array(800, 800), $data->row->name); 
         }
         
 
         if($data->rec->image2) {
-            $data->row->image2 = fancybox_Fancybox::getImage($data->rec->image2, array(120, 120), array(600, 600), $data->row->name . ' 2'); 
+            $data->row->image2 = fancybox_Fancybox::getImage($data->rec->image2, array(160, 160), array(800, 800), $data->row->name . ' 2'); 
         }
 
         if($data->rec->image3) {
-            $data->row->image3 = fancybox_Fancybox::getImage($data->rec->image3, array(120, 120), array(600, 600), $data->row->name3 . ' 3'); 
+            $data->row->image3 = fancybox_Fancybox::getImage($data->rec->image3, array(160, 160), array(800, 800), $data->row->name3 . ' 3'); 
         }
 
         if($data->rec->image4) {
-            $data->row->image4 = fancybox_Fancybox::getImage($data->rec->image4, array(120, 120), array(600, 600), $data->row->name4 . ' 4'); 
+            $data->row->image4 = fancybox_Fancybox::getImage($data->rec->image4, array(160, 160), array(800, 800), $data->row->name4 . ' 4'); 
         }
 
         if($data->rec->image5) {
-            $data->row->image5 = fancybox_Fancybox::getImage($data->rec->image5, array(120, 120), array(600, 600), $data->row->name5 . ' 5'); 
+            $data->row->image5 = fancybox_Fancybox::getImage($data->rec->image5, array(160, 160), array(800, 6800), $data->row->name5 . ' 5'); 
         }
 
         if(self::haveRightFor('edit', $data->rec)) {

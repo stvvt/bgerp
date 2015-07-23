@@ -39,9 +39,6 @@ class crm_Persons extends core_Master
         // Интерфейс за входящ документ
         'incoming_CreateDocumentIntf',
     		
-    	// Интерфейс за източник на производствен ресурс
-    	'planning_ResourceSourceIntf',
-    		
     	// Интерфейс за корица на папка в която може да се създава артикул
     	'cat_ProductFolderCoverIntf',
     );
@@ -212,7 +209,7 @@ class crm_Persons extends core_Master
      * @var string|array
      */
     public $details = 'ContragentLocations=crm_Locations,Pricelists=price_ListToCustomers,
-                    ContragentBankAccounts=bank_Accounts,IdCard=crm_ext_IdCards,CustomerSalecond=cond_ConditionsToCustomers,AccReports=acc_ReportDetails,Cards=pos_Cards,Resources=planning_ObjectResources';
+                    ContragentBankAccounts=bank_Accounts,IdCard=crm_ext_IdCards,CustomerSalecond=cond_ConditionsToCustomers,AccReports=acc_ReportDetails,Cards=pos_Cards';
     
     
     /**
@@ -1280,7 +1277,7 @@ class crm_Persons extends core_Master
         //Вземаме данните
         $person = crm_Persons::fetch($id);
 
-        //Заместваме и връщаме данните
+        // Заместваме и връщаме данните
         if ($person) {
             $contrData = new stdClass();
             $contrData->company = crm_Persons::getVerbal($person, 'buzCompanyId');
@@ -1289,6 +1286,7 @@ class crm_Persons extends core_Master
             $contrData->country = crm_Persons::getVerbal($person, 'country');
             $contrData->countryId = $person->country;
             $contrData->pCode = $person->pCode;
+            $contrData->uicId = $person->egn;
             $contrData->place = $person->place;
             $contrData->email = $person->buzEmail;
             $contrData->tel = $person->buzTel;
@@ -2382,51 +2380,6 @@ class crm_Persons extends core_Master
     	}
     	
     	return TRUE;
-    }
-    
-    
-    /**
-     * Можели обекта да се добави като ресурс?
-     *
-     * @param int $id - ид на обекта
-     * @return boolean - TRUE/FALSE
-     */
-    public function canHaveResource($id)
-    {
-    	$rec = $this->fetchRec($id);
-    	$groupId = crm_Groups::getIdFromSysId('employees');
-    	
-    	// Само ако е от група "Служители"
-    	if(keylist::isIn($groupId, $rec->groupList)){
-    		return TRUE;
-    	}
-    	
-    	return FALSE;
-    }
-    
-     
-    /**
-     * Връща дефолт информация от източника на ресурса
-     *
-     * @param int $id - ид на обекта
-     * @return stdClass $res  - обект с информация
-     * 		o $res->name      - име
-     * 		o $res->measureId - име мярка на ресурса (@see cat_UoM)
-     * 		o $res->type      -  тип на ресурса (material,labor,equipment)
-     */
-    public function getResourceSourceInfo($id)
-    {
-    	$rec = $this->fetchRec($id);
-    	
-    	$res = new stdClass();
-    	
-    	// Основната мярка на ресурса е 'час'
-    	$res->measureId = cat_UoM::fetchBySinonim('h')->id; 
-    	
-    	// Типа на ресурса ще е 'труд'
-    	$res->type = 'labor'; 
-    	
-    	return $res;
     }
     
     

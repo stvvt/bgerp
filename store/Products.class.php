@@ -113,12 +113,13 @@ class store_Products extends core_Manager
      */
     public static function on_CalcName(core_Mvc $mvc, $rec)
     {
-    	if(empty($rec->productId) || empty($rec->classId)){
+    	if(empty($rec->productId) || empty($rec->classId) || !cls::load($rec->classId, TRUE)){
     		return;
     	}
     	
     	try{
-    		$name = $rec->name = cls::get($rec->classId)->getTitleById($rec->productId);
+    	    expect(cls::load($rec->classId, TRUE));
+	        $name = cls::get($rec->classId)->getTitleById($rec->productId);
     	} catch(core_exception_Expect $e){
     		$name = tr('Проблем при показването');
     	}
@@ -325,7 +326,7 @@ class store_Products extends core_Manager
     
     
     /**
-     * Изчиства записите в балансите
+     * Изчиства записите в склада
      */
     public function act_Truncate()
     {
