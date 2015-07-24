@@ -14,7 +14,7 @@ function slidebars(){
  * Създава лентите и задава необходините опции спрямо ширината на страницата
  */
 function initElements() {
-    if ($('#main-container > .tab-control > .tab-row').length == 0) {
+    if($('#main-container > .tab-control > .tab-row').length == 0) {
         $('#framecontentTop').css('border-bottom', '1px solid #ccc');
     }
 
@@ -24,6 +24,8 @@ function initElements() {
     if ($(window).width() <= 800) {
         $(".sidebars").removeClass('menu-active');
     }
+
+    //$('.sidemenu,  #main-container,  .narrow #packWrapper , #framecontentTop, .tab-row').addClass('transition');
 }
 /*
 	var viewportWidth = $(window).width();
@@ -39,7 +41,7 @@ function initElements() {
 		}
 	}
 
-	$('.sidemenu,  #main-container,  .narrow #packWrapper , #framecontentTop, .tab-row').addClass('transition');
+
 
 	if($('body').hasClass('narrow') && viewportWidth <= 800){
         setViewportWidth(viewportWidth);
@@ -53,7 +55,18 @@ function initElements() {
 function calculateSize() {
     $('.tableHolder').css('height', $(window).height());
     $('.tableHolder .relativeHolder').css('height', $(window).height());
+    var contentWidth = $(window).width() - 200 * $('.sidebars.menu-active').length - scrollWidth -1
+
+
+    $('#main-container').css('width', contentWidth);
+    $('#main-container').css('overflow-x', 'auto');
+    var scrollWidth=0;
+
+    var headerWidth = $(window).width() - 200 * $('.sidebars.menu-active').length - scrollWidth -1 ;
+
+    $('.tableHolder #framecontentTop').css('width', headerWidth);
     if ($(window).width() <= 800) {
+        $('#main-container').css('max-width', $(window).width() - 20);
         $('.tableHolder').css('width', $(window).width() + 400);
         $( '.sidebars').removeClass('nonVisible ').css('width', 200);
     } else {
@@ -63,6 +76,8 @@ function calculateSize() {
 
 function closeSidebar(side){
    if(side != "left" && side != "right") return;
+    $('.tableHolder').removeClass('opened-' + side);
+
     if ($(window).width() <= 800) {
         $('.tableHolder').removeClass('pulled-' + side);
         $(".sidebar-" + side).removeClass('menu-active');
@@ -79,6 +94,8 @@ function closeSidebar(side){
 
 function openSidebar(side) {
     if (side !== 'left' && side !== 'right') return;
+
+    $('.tableHolder').addClass('opened-' + side);
 
     if ($(window).width() <= 800) {
         $('.tableHolder').addClass('pulled-' + side);
@@ -277,23 +294,6 @@ function sidebarAccordeonActions() {
 	});
 }
 
-/**
- * Задава максиналната височина на опаковката и основното съдържание
- */
-function setMinHeight() {
-	 if($('.inner-framecontentTop').length){
-		 var menuHeight = $('.tab-control > .tab-row').first().height();
-		 var headerHeight = parseInt($('.inner-framecontentTop').height(), 10);
-		 var calcMargin = headerHeight + menuHeight;
-		 if ($('body').hasClass('narrow')){
-			 $(window).scrollTop(0);
-			 $('#maincontent').css('margin-top', calcMargin - 12);
-		 }
-		 var clientHeight = parseInt(document.documentElement.clientHeight,10);
-		 $('#packWrapper').css('min-height', clientHeight - headerHeight - 68);
-		 $('#maincontent').css('min-height', clientHeight - headerHeight - 38);
-	 }
-}
 
 /**
  * Скролира listTable, ако е необходимо
