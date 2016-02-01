@@ -66,6 +66,9 @@ class cash_transaction_Pko extends acc_DocumentTransactionSource
     	// Ако е обратна транзакцията, сумите и к-та са с минус
     	$sign = ($reverse) ? -1 : 1;
     	
+    	
+    	
+    	
     	// Кредита е винаги във валутата на пораждащия документ,
     	$creditCurrency = currency_Currencies::getIdByCode($origin->fetchField('currencyId'));
     	$creditQuantity = $amount / $origin->fetchField('currencyRate');
@@ -75,15 +78,17 @@ class cash_transaction_Pko extends acc_DocumentTransactionSource
     						array('cash_Cases', $rec->peroCase),
     						array('currency_Currencies', $rec->currencyId),
     						'quantity' => $sign * $rec->amount,);
-    	
+    
     	// Кредитираме разчетната сметка
     	$creditArr = array($rec->creditAccount,
     							array($rec->contragentClassId, $rec->contragentId),
     							array($origin->className, $origin->that),
-    							array('currency_Currencies', $creditCurrency),
-    							'quantity' => $sign * $creditQuantity);
+    							array('currency_Currencies', $rec->dealCurrencyId),
+    							'quantity' => $sign * $rec->amountDeal);
     	
-    	$entry = array('amount' => $sign * $amount, 'debit' => $debitArr, 'credit' => $creditArr,);
+    	$entry = array('debit' => $debitArr, 'credit' => $creditArr,);
+    	//'amount' => $sign * $amount, 
+    	
     	
     	return array($entry);
     }

@@ -74,11 +74,11 @@
                                 <!--ET_BEGIN equals-->
                                 <td style='vertical-align:middle !important'>
                                     <div class ='misc' style='float:right'>
-                                        <span class='labels'>|Курс|*:</span> &nbsp;&nbsp;<b>[#rate#]</b><br>
                                         <div style='margin-top:7px;'>
-                                            <span class='labels'>|Равностойност|*:</span>
-                                            <span class='cCode'>[#baseCurrency#]</span>&nbsp;&nbsp;<b>[#equals#]</b>
+                                            <span class='labels'>|Погасени по сделката|*:</span>
+                                            <span class='cCode'>[#dealCurrencyId#]</span>&nbsp;&nbsp;<b>[#amountDeal#]</b>
                                         </div>
+                                        <span class='labels'>|Курс|*: <b>[#rate#]</b> [#rateFromCurrencyId#] |за|* 1 [#rateToCurrencyId#]<br></span>
                                     </div>
                                 </td>
                                 <!--ET_END equals-->

@@ -9,7 +9,7 @@
  * @category  bgerp
  * @package   cash
  * @author    Ivelin Dimov <ivelin_pdimov@abv.bg>
- * @copyright 2006 - 2014 Experta OOD
+ * @copyright 2006 - 2016 Experta OOD
  * @license   GPL 3
  * @since     v 0.1
  */
@@ -20,7 +20,7 @@ class cash_Pko extends core_Master
     /**
      * Какви интерфейси поддържа този мениджър
      */
-    var $interfaces = 'doc_DocumentIntf, acc_TransactionSourceIntf=cash_transaction_Pko, sales_PaymentIntf, bgerp_DealIntf, email_DocumentIntf, doc_ContragentDataIntf';
+    public $interfaces = 'doc_DocumentIntf, acc_TransactionSourceIntf=cash_transaction_Pko, bgerp_DealIntf, email_DocumentIntf, doc_ContragentDataIntf';
    
     
     /**
@@ -40,13 +40,13 @@ class cash_Pko extends core_Master
     /**
      * Заглавие на мениджъра
      */
-    var $title = "Приходни касови ордери";
+    public $title = "Приходни касови ордери";
     
     
     /**
      * Неща, подлежащи на начално зареждане
      */
-    var $loadList = 'plg_RowTools, cash_Wrapper, plg_Sorting, acc_plg_Contable,
+    public $loadList = 'plg_RowTools, cash_Wrapper, plg_Sorting, acc_plg_Contable,
                      doc_DocumentPlg, plg_Printing, doc_SequencerPlg,acc_plg_DocumentSummary,
                      plg_Search,doc_plg_MultiPrint, bgerp_plg_Blank, doc_plg_HidePrices,
                      bgerp_DealIntf, doc_EmailCreatePlg, cond_plg_DefaultValues';
@@ -61,97 +61,97 @@ class cash_Pko extends core_Master
     /**
      * Полета, които ще се показват в листов изглед
      */
-    var $listFields = "tools=Пулт, valior, title=Документ, reason, folderId, currencyId=Валута, amount, state, createdOn, createdBy";
+    public $listFields = "tools=Пулт, valior, title=Документ, reason, folderId, currencyId=Валута, amount, state, createdOn, createdBy";
     
     
     /**
      * Полето в което автоматично се показват иконките за редакция и изтриване на реда от таблицата
      */
-    var $rowToolsField = 'tools';
+    public $rowToolsField = 'tools';
     
     
     /**
 	 * Кой може да го разглежда?
 	 */
-	var $canList = 'ceo, cash';
+	public $canList = 'ceo, cash';
 
 
 	/**
 	 * Кой може да разглежда сингъла на документите?
 	 */
-	var $canSingle = 'ceo, cash';
+	public $canSingle = 'ceo, cash';
     
     
     /**
      * Хипервръзка на даденото поле и поставяне на икона за индивидуален изглед пред него
      */
-    var $rowToolsSingleField = 'title';
+    public $rowToolsSingleField = 'title';
     
     
     /**
      * Заглавие на единичен документ
      */
-    var $singleTitle = 'Приходен касов ордер';
+    public $singleTitle = 'Приходен касов ордер';
     
     
     /**
      * Икона на единичния изглед
      */
-    var $singleIcon = 'img/16/money_add.png';
+    public $singleIcon = 'img/16/money_add.png';
     
     
     /**
      * Абревиатура
      */
-    var $abbr = "Pko";
+    public $abbr = "Pko";
     
     
     /**
      * Кой има право да чете?
      */
-    var $canRead = 'cash, ceo';
+    public $canRead = 'cash, ceo';
     
     
     /**
      * Кой може да пише?
      */
-    var $canWrite = 'cash, ceo';
+    public $canWrite = 'cash, ceo';
     
     
     /**
      * Кой може да го контира?
      */
-    var $canConto = 'cash, ceo';
+    public $canConto = 'cash, ceo';
     
     
     /**
      * Кой може да го оттегля
      */
-    var $canRevert = 'cash, ceo';
+    public $canRevert = 'cash, ceo';
     
     
     /**
      * Файл с шаблон за единичен изглед на статия
      */
-    var $singleLayoutFile = 'cash/tpl/Pko.shtml';
+    public $singleLayoutFile = 'cash/tpl/Pko.shtml';
     
     
     /**
      * Полета от които се генерират ключови думи за търсене (@see plg_Search)
      */
-    var $searchFields = 'number, valior, contragentName, reason, id';
+    public $searchFields = 'number, valior, contragentName, reason, id';
     
     
     /**
      * Параметри за принтиране
      */
-    var $printParams = array( array('Оригинал'), array('Копие')); 
+    public $printParams = array( array('Оригинал'), array('Копие')); 
 
     
     /**
      * Групиране на документите
      */
-    var $newBtnGroup = "4.1|Финанси";
+    public $newBtnGroup = "4.1|Финанси";
     
     
     /**
@@ -176,7 +176,8 @@ class cash_Pko extends core_Master
     	$this->FLD('operationSysId', 'varchar', 'caption=Операция,mandatory');
     	
     	// Платена сума във валута, определена от полето `currencyId`
-    	$this->FLD('amount', 'double(decimals=2,max=2000000000,min=0)', 'caption=Сума,mandatory,summary=amount');
+    	$this->FLD('amountDeal', 'double(decimals=2,max=2000000000,min=0)', 'caption=Сума,mandatory,summary=amount');
+    	$this->FLD('dealCurrencyId', 'key(mvc=currency_Currencies, select=code)', 'input=hidden');
     	
     	$this->FLD('reason', 'richtext(rows=2)', 'caption=Основание,mandatory');
     	$this->FLD('valior', 'date(format=d.m.Y)', 'caption=Вальор,mandatory');
@@ -192,8 +193,9 @@ class cash_Pko extends core_Master
     	$this->FLD('depositor', 'varchar(255)', 'caption=Контрагент->Броил,mandatory');
     	$this->FLD('creditAccount', 'customKey(mvc=acc_Accounts,key=systemId,select=systemId)', 'input=none');
     	$this->FLD('debitAccount', 'customKey(mvc=acc_Accounts,key=systemId,select=systemId)', 'input=none');
-    	$this->FLD('currencyId', 'key(mvc=currency_Currencies, select=code)', 'caption=Валута->Код');
-    	$this->FLD('rate', 'double(decimals=5)', 'caption=Валута->Курс');
+    	$this->FLD('currencyId', 'key(mvc=currency_Currencies, select=code)', 'caption=Валута->Код,removeAndRefreshForm=amount,silent');
+    	$this->FLD('amount', 'double(decimals=2,max=2000000000,min=0)', 'caption=Валута->Заверени,summary=amount,input=hidden');
+    	$this->FLD('rate', 'double(decimals=5)', 'caption=Валута->Курс,input=none');
     	$this->FLD('notes', 'richtext(bucket=Notes,rows=6)', 'caption=Допълнително->Бележки');
     	$this->FLD('state', 
             'enum(draft=Чернова, active=Контиран, rejected=Сторниран, closed=Контиран)', 
@@ -209,7 +211,7 @@ class cash_Pko extends core_Master
 	/**
 	 *  Подготовка на филтър формата
 	 */
-	static function on_AfterPrepareListFilter($mvc, $data)
+	protected static function on_AfterPrepareListFilter($mvc, $data)
 	{
 		// Добавяме към формата за търсене търсене по Каса
 		cash_Cases::prepareCaseFilter($data, array('peroCase'));
@@ -230,7 +232,6 @@ class cash_Pko extends core_Master
         $form->setDefault('contragentClassId', $contragentClassId);
     	
         expect($origin = $mvc->getOrigin($form->rec));
-        expect($origin->haveInterface('bgerp_DealAggregatorIntf'));
         $dealInfo = $origin->getAggregateDealInfo();
         $pOperations = $dealInfo->get('allowedPaymentOperations');
         
@@ -258,15 +259,21 @@ class cash_Pko extends core_Master
 	    	cash_Cases::selectCurrent($caseId);
 	    }
     		 	
-	    $cId = $dealInfo->get('currency');
-	    $form->setDefault('currencyId', currency_Currencies::getIdByCode($cId));
-	    $form->setDefault('rate', $dealInfo->get('rate'));
-    		 		
-    	if($dealInfo->get('dealType') == sales_Sales::AGGREGATOR_TYPE){
+	    $cId = currency_Currencies::getIdByCode($dealInfo->get('currency'));
+	    $form->setDefault('dealCurrencyId', $cId);
+	    $form->setDefault('currencyId', $cId);
+    	
+	    $form->setField('amountDeal', array('unit' => "{$dealInfo->get('currency')}, платени (погасени) по сделката"));
+	    
+	    if($dealInfo->get('dealType') == sales_Sales::AGGREGATOR_TYPE){
     		$dAmount = currency_Currencies::round($amount, $dealInfo->get('currency'));
     		if($dAmount != 0){
-    		 	$form->setDefault('amount',  $dAmount);
+    		 	$form->setDefault('amountDeal',  $dAmount);
     		 }
+    	}
+    	
+    	if($form->rec->currencyId != $form->rec->dealCurrencyId){
+    		$form->setField('amount', 'input');
     	}
     	
     	// Поставяме стойности по подразбиране
@@ -284,8 +291,6 @@ class cash_Pko extends core_Master
     	$form->setDefault('peroCase', cash_Cases::getCurrent());
     	$cData = cls::get($contragentClassId)->getContragentData($contragentId);
     	$form->setReadOnly('contragentName', ($cData->person) ? $cData->person : $cData->company);
-    	
-    	$form->addAttr('currencyId', array('onchange' => "document.forms['{$data->form->formAttr['id']}'].elements['rate'].value ='';"));
     }
 
     
@@ -310,12 +315,15 @@ class cash_Pko extends core_Master
     /**
      * Проверка и валидиране на формата
      */
-    function on_AfterInputEditForm($mvc, $form)
+    public static function on_AfterInputEditForm($mvc, $form)
     {
+    	$rec = &$form->rec;
+    	
+    	if($form->rec->currencyId != $form->rec->dealCurrencyId){
+    		$form->setField('amount', 'mandatory');
+    	}
+    	
     	if ($form->isSubmitted()){
-    		
-    		$rec = &$form->rec;
-	    	
     		$origin = $mvc->getOrigin($form->rec);
     		$dealInfo = $origin->getAggregateDealInfo();
     		
@@ -331,19 +339,10 @@ class cash_Pko extends core_Master
 	    	$rec->contragentPcode = $contragentData->pCode;
 	    	$rec->contragentPlace = $contragentData->place;
 	    	$rec->contragentAdress = $contragentData->address;
-	    	$currencyCode = currency_Currencies::getCodeById($rec->currencyId);
 	    	
-		    if(!$rec->rate){
-		    	// Изчисляваме курса към основната валута ако не е дефиниран
-		    	$rec->rate = round(currency_CurrencyRates::getRate($rec->valior, $currencyCode, NULL), 4);
-		    	if(!$rec->rate){
-		    		$form->setError('rate', "Не може да се изчисли курс");
-		    	}
-		    } else {
-		    	if($msg = currency_CurrencyRates::hasDeviation($rec->rate, $rec->valior, $currencyCode, NULL)){
-		    		$form->setWarning('rate', $msg);
-		    	}
-		    }
+	    	if($form->rec->currencyId == $form->rec->dealCurrencyId){
+	    		$rec->amount = $rec->amountDeal;
+	    	}
 	    }
     	
 	    acc_Periods::checkDocumentDate($form, 'valior');
@@ -353,7 +352,7 @@ class cash_Pko extends core_Master
     /**
      *  Обработки по вербалното представяне на данните
      */
-    static function on_AfterRecToVerbal($mvc, &$row, $rec, $fields = array())
+    protected static function on_AfterRecToVerbal($mvc, &$row, $rec, $fields = array())
     {
     	$row->title = $mvc->getLink($rec->id, 0);
     	
@@ -361,19 +360,26 @@ class cash_Pko extends core_Master
     		
     		$contragent = new core_ObjectReference($rec->contragentClassId, $rec->contragentId);
     		$row->contragentAddress = $contragent->getFullAdress();
-    		
-            if($rec->rate != 1) {
-		   		$rec->equals = round($rec->amount * $rec->rate, 2);
-		   		$row->equals = $mvc->getFieldType('amount')->toVerbal($rec->equals);
-		   		$row->baseCurrency = acc_Periods::getBaseCurrencyCode($rec->valior);
-		    } 
-		    
-            if(!$rec->equals) {
-	    		
-	    		// Ако валутата на документа съвпада с тази на периода не се показва курса
-	    		unset($row->rate);
-	    		unset($row->baseCurrency);
-	    	} 
+    		if($rec->dealCurrencyId != $rec->currencyId){
+    			$baseCurrencyId = acc_Periods::getBaseCurrencyId($rec->valior);
+    			
+    			if($rec->dealCurrencyId == $baseCurrencyId){
+    				$rate = $rec->amountDeal / $rec->amount;
+    				$rateFromCurrencyId = $rec->dealCurrencyId;
+    				$rateToCurrencyId = $rec->currencyId;
+    			} else {
+    				$rate = $rec->amount / $rec->amountDeal;
+    				$rateFromCurrencyId = $rec->currencyId;
+    				$rateToCurrencyId = $rec->dealCurrencyId;
+    			}
+    			
+    			$row->rate = cls::get('type_Double', array('params' => array('decimals' => 5)))->toVerbal($rate);
+    			$row->rateFromCurrencyId = currency_Currencies::getCodeById($rateFromCurrencyId);
+    			$row->rateToCurrencyId = currency_Currencies::getCodeById($rateToCurrencyId);
+    		} else {
+    			unset($row->dealCurrencyId);
+    			unset($row->amountDeal);
+    		}
            
 	    	$spellNumber = cls::get('core_SpellNumber');
 		    $amountVerbal = $spellNumber->asCurrency($rec->amount, 'bg', FALSE);
@@ -398,7 +404,7 @@ class cash_Pko extends core_Master
     /**
      * Вкарваме css файл за единичния изглед
      */
-	static function on_AfterRenderSingle($mvc, &$tpl, $data)
+	protected static function on_AfterRenderSingle($mvc, &$tpl, $data)
     {
     	$tpl->push('cash/tpl/styles.css', 'CSS');
     }
@@ -461,35 +467,6 @@ class cash_Pko extends core_Master
 		
     	return FALSE;
     }
-    
-    
-   	/*
-     * Реализация на интерфейса sales_PaymentIntf
-     */
-    
-    
-    /**
-     * Информация за платежен документ
-     * 
-     * @param int|stdClass $id ключ (int) или запис (stdClass) на модел 
-     * @return stdClass Обект със следните полета:
-     *
-     *   o amount       - обща сума на платежния документ във валутата, зададена от `currencyCode`
-     *   o currencyCode - key(mvc=currency_Currencies, key=code): ISO код на валутата
-     *   o currencyRate - double - валутен курс към основната (към датата на док.) валута 
-     *   o valior       - date - вальор на документа
-     */
-    public static function getPaymentInfo($id)
-    {
-        $rec = self::fetchRec($id);
-        
-        return (object)array(
-            'amount' 	   => $rec->amount,
-            'currencyCode' => currency_Currencies::getCodeById($rec->currencyId),
-        	'currencyRate' => $rec->rate,
-            'valior'       => $rec->valior,
-        );
-    }
 
 
     /**
@@ -520,7 +497,7 @@ class cash_Pko extends core_Master
      * Интерфейсен метод на doc_ContragentDataIntf
      * Връща тялото на имейл по подразбиране
      */
-    static function getDefaultEmailBody($id)
+    public static function getDefaultEmailBody($id)
     {
         $handle = static::getHandle($id);
         $tpl = new ET(tr("Моля запознайте се с нашия приходен касов ордер") . ': #[#handle#]');
@@ -529,20 +506,10 @@ class cash_Pko extends core_Master
     }
     
     
-	/**
-     * Извиква се след изчисляването на необходимите роли за това действие
-     */
-    function on_AfterGetRequiredRoles($mvc, &$res, $action, $rec = NULL, $userId = NULL)
-    {
-        // Ако резултата е 'no_one' пропускане
-    	if($res == 'no_one') return;
-    }
-    
-    
     /**
      * Подготовка на бутоните на формата за добавяне/редактиране
      */
-    function on_AfterPrepareEditToolbar($mvc, &$res, $data)
+    protected static function on_AfterPrepareEditToolbar($mvc, &$res, $data)
     {
     	// Документа не може да се създава  в нова нишка, ако е възоснова на друг
     	if(!empty($data->form->toolbar->buttons['btnNewThread'])){
@@ -554,7 +521,7 @@ class cash_Pko extends core_Master
     /**
      * Извиква се след подготовката на toolbar-а за табличния изглед
      */
-    static function on_AfterPrepareListToolbar($mvc, &$data)
+    protected static function on_AfterPrepareListToolbar($mvc, &$data)
     {
     	if(!empty($data->toolbar->buttons['btnAdd'])){
     		$data->toolbar->removeBtn('btnAdd');
@@ -565,7 +532,7 @@ class cash_Pko extends core_Master
     /**
      * Връща разбираемо за човека заглавие, отговарящо на записа
      */
-    static function getRecTitle($rec, $escaped = TRUE)
+    public static function getRecTitle($rec, $escaped = TRUE)
     {
     	$self = cls::get(__CLASS__);
     	
