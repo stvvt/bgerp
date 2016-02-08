@@ -68,9 +68,15 @@ class planning_DirectProductNoteDetails extends deals_ManifactureDetail
     /**
      * Полета, които ще се показват в листов изглед
      */
-    public $listFields = 'tools=№,productId=Материал, packagingId, packQuantity';
+    public $listFields = 'tools=№,productId=Материал, packagingId, packQuantity=Количества->Вложено, quantityFromBom=Количества->Рецепта, quantityFromTasks=Количества->Задачи';
     
-        
+
+    /**
+     * Полета, които ще се скриват ако са празни
+     */
+    public $hideListFieldsIfEmpty = 'quantityFromBom,quantityFromTasks';
+    
+    
     /**
      * Активен таб
      */
@@ -94,6 +100,10 @@ class planning_DirectProductNoteDetails extends deals_ManifactureDetail
         
         parent::setDetailFields($this);
         $this->FLD('conversionRate', 'double', 'input=none');
+        
+        $this->FLD('quantityFromBom', 'double(Min=0)', 'caption=Количества->Рецепта,input=none,tdClass=quiet');
+        $this->FLD('quantityFromTasks', 'double(Min=0)', 'caption=Количества->Задачи,input=none,tdClass=quiet');
+        $this->setField('quantity', 'caption=Количества->Вложено');
         
         // Само вложими продукти
         $this->setDbUnique('noteId,productId,type');
@@ -148,8 +158,10 @@ class planning_DirectProductNoteDetails extends deals_ManifactureDetail
     		$pInfo = cat_Products::getProductInfo($rec->productId);
     		if(isset($pInfo->meta['canStore'])){
     			$storeId = $mvc->Master->fetchField($rec->noteId, 'inputStoreId');
-    			$storeInfo = deals_Helper::checkProductQuantityInStore($rec->productId, $rec->packagingId, $rec->packQuantity, $storeId);
-    			$form->info = $storeInfo->formInfo;
+    			if(!empty($storeId)){
+    				$storeInfo = deals_Helper::checkProductQuantityInStore($rec->productId, $rec->packagingId, $rec->packQuantity, $storeId);
+    				$form->info = $storeInfo->formInfo;
+    			}
     		}
     	
     		if($form->isSubmitted()){
@@ -180,8 +192,17 @@ class planning_DirectProductNoteDetails extends deals_ManifactureDetail
     	
     	foreach ($data->rows as $id => &$row)
     	{
-    		$rec = $data->recs[$id];
+    		$rec = &$data->recs[$id];
     		$row->ROW_ATTR['class'] = ($rec->type == 'input') ? 'row-added' : 'row-removed';
+    		if(isset($rec->quantityFromBom)){
+    			$rec->quantityFromBom = $rec->quantityFromBom / $rec->quantityInPack;
+    			$row->quantityFromBom = $mvc->getFieldType('quantityFromBom')->toVerbal($rec->quantityFromBom);
+    		}
+    		
+    		if(isset($rec->quantityFromTasks)){
+    			$rec->quantityFromTasks = $rec->quantityFromTasks / $rec->quantityInPack;
+    			$row->quantityFromTasks = $mvc->getFieldType('quantityFromTasks')->toVerbal($rec->quantityFromTasks);
+    		}
     		
     		if($rec->type == 'pop'){
     			$row->packQuantity .= " {$row->packagingId}";
@@ -238,7 +259,9 @@ class planning_DirectProductNoteDetails extends deals_ManifactureDetail
     	}
     	
     	// Рендираме таблицата с вложените материали
-    	$data->listFields['productId'] = '|Суровини и материали|* ' . "<small style='font-weight:normal'>( |вложени от склад|*: {$data->masterData->row->inputStoreId} )</small>";
+    	$misc = ($data->masterData->rec->inputStoreId) ? "|вложени от склад|*: {$data->masterData->row->inputStoreId}" : "за изписване от незавършеното производство";
+    	$data->listFields['productId'] = '|Суровини и материали|* ' . "<small style='font-weight:normal'>( {$misc} )</small>";
+    	
     	$table = cls::get('core_TableView', array('mvc' => $this));
     	$table->setFieldsToHideIfEmptyColumn($this->hideListFieldsIfEmpty);
     	

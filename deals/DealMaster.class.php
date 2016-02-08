@@ -50,6 +50,12 @@ abstract class deals_DealMaster extends deals_DealBase
 	
 	
 	/**
+	 * Не искаме документа да се кеширва в нишката
+	 */
+	public $preventCache = TRUE;
+	
+	
+	/**
 	 * Извиква се след описанието на модела
 	 *
 	 * @param core_Mvc $mvc
@@ -766,7 +772,7 @@ abstract class deals_DealMaster extends deals_DealBase
             	$pointSign = $coreConf->EF_NUMBER_DEC_POINT;
             	$row->{"amount{$amnt}"} = '<span class="quiet">0' . $pointSign . '00</span>';
             } else {
-            	$value = round($rec->{"amount{$amnt}"} / $rec->currencyRate, 2);
+            	@$value = round($rec->{"amount{$amnt}"} / $rec->currencyRate, 2);
             	$row->{"amount{$amnt}"} = $amountType->toVerbal($value);
             }
         }

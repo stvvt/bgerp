@@ -193,12 +193,12 @@ class blogm_Articles extends core_Master {
      * След обновяването на коментарите, обновяваме информацията в статията
      */
     protected static function on_AfterUpdateDetail(core_Manager $mvc, $id, core_Manager $detailMvc)
-    {
-        if($Detail->className == 'blogm_Comments') {
+    {  
+        if($detailMvc->className == 'blogm_Comments') {
             $queryC = $detailMvc->getQuery();
             $queryC->where("#articleId = {$id} AND #state = 'active'");
             $rec = $mvc->fetch($id);
-            $rec->commentsCnt = $queryC->count();
+            $rec->commentsCnt = $queryC->count(); 
             $mvc->save($rec);
         }
     }
@@ -797,7 +797,8 @@ class blogm_Articles extends core_Master {
  		$layout->append(blogm_Categories::renderCategories($data), 'CATEGORIES');
 		
   		
-        if($data->workshop) { 
+        if($data->workshop) {
+            $data->workshop['ret_url'] = TRUE;
             $layout->append(ht::createBtn('Работилница', $data->workshop, NULL, NULL, 'ef_icon=img/16/application_edit.png'), 'WORKSHOP');
         }
         
@@ -1064,6 +1065,21 @@ class blogm_Articles extends core_Master {
         unset($url['PU']);
 
         return $url;
+    }
+
+    
+    /**
+     * След рендиране на синъл изгледа
+     *
+     * @param blogm_Articles $mvc
+     * @param core_ET $tpl
+     * @param object $data
+     */
+    function on_AfterRenderSingleLayout($mvc, &$tpl, $data)
+    {
+        // Оттегляне на нотификацията
+        $url = array($mvc, 'single', $data->rec->id);
+        bgerp_Notifications::clear($url);
     }
 
 

@@ -51,7 +51,7 @@ class planning_Jobs extends core_Master
     /**
      * Плъгини за зареждане
      */
-    public $loadList = 'plg_RowTools, doc_DocumentPlg, planning_plg_StateManager, planning_Wrapper, plg_Sorting, acc_plg_DocumentSummary, plg_Search, doc_SharablePlg, change_Plugin';
+    public $loadList = 'plg_RowTools, doc_DocumentPlg, planning_plg_StateManager, planning_Wrapper, plg_Sorting, acc_plg_DocumentSummary, plg_Search, doc_SharablePlg, change_Plugin, plg_Clone';
     
     
     /**
@@ -115,9 +115,15 @@ class planning_Jobs extends core_Master
     
     
     /**
+     * Кой може да клонира
+     */
+    public $canClonerec = 'ceo,planning';
+    
+    
+    /**
      * Полета, които ще се показват в листов изглед
      */
-    public $listFields = 'tools=Пулт,dueDate, title=Документ, productId=За артикул, saleId, quantity, quantityProduced, folderId, state, createdOn, createdBy, modifiedOn,modifiedBy';
+    public $listFields = 'tools=Пулт,dueDate, title=Документ, quantityFromTasks, quantityProduced, quantityNotStored=Незаскладено, folderId, state, modifiedOn,modifiedBy';
     
     
     /**
@@ -149,12 +155,6 @@ class planning_Jobs extends core_Master
      */
     var $details = 'Tasks=tasks_Tasks';
     
-
-    /**
-     * Кои полета от листовия изглед да се скриват ако няма записи в тях
-     */
-    protected $hideListFieldsIfEmpty = 'saleId';
-    
     
     /**
      * Вербални наименования на състоянията
@@ -166,6 +166,12 @@ class planning_Jobs extends core_Master
     									'rejected' => 'Оттегляне',
     									'restore'  => 'Възстановяване',
     								    'wakeup'   => 'Събуждане');
+    
+    
+    /**
+     * Да се забрани ли кеширането на документа
+     */
+    public $preventCache = TRUE;
     
     
 	/**
@@ -308,10 +314,6 @@ class planning_Jobs extends core_Master
     		 $pUrl = array('planning_DirectProductionNote', 'add', 'originId' => $rec->containerId, 'ret_url' => TRUE);
     		 $data->toolbar->addBtn("Производство", $pUrl, 'ef_icon = img/16/page_paste.png,title=Създаване на протокол за бързо производство от заданието');
     	}
-    	
-    	if($mvc->haveRightFor('add', (object)array('productId' => $rec->productId))){
-    		$data->toolbar->addBtn("Нов", array($mvc, 'add', 'productId' => $rec->productId), 'ef_icon = img/16/clipboard_text.png,title=Създаване на ново задание за производство за артикула');
-    	}
     }
     
     
@@ -380,31 +382,40 @@ class planning_Jobs extends core_Master
     		$row->quantityFromTasks = $mvc->getFieldType('quantity')->toVerbal($rec->quantityFromTasks);
     	}
     	
-    	$row->quantity .= " {$shortUom}";
-    	$row->quantityProduced .=  " {$shortUom}";
-    	$row->quantityFromTasks .=  " {$shortUom}";
-    	$quantityToProduce = $rec->quantity - $rec->quantityProduced;
-    	$quantityNotStored = $rec->quantityFromTasks - $rec->quantityProduced;
+    	$rec->quantityNotStored = $rec->quantityFromTasks - $rec->quantityProduced;
+    	$row->quantityNotStored = $mvc->getFieldType('quantity')->toVerbal($rec->quantityNotStored);
     	
-    	$row->quantityNotStored = $mvc->getFieldType('quantity')->toVerbal($quantityNotStored);
-    	$row->quantityNotStored .=  " {$shortUom}";
-    	
-    	$row->quantityToProduce = $mvc->getFieldType('quantity')->toVerbal($quantityToProduce);
-    	$row->quantityToProduce .=  " {$shortUom}";
+    	$rec->quantityToProduce = $rec->quantity - $rec->quantityProduced;
+    	$row->quantityToProduce = $mvc->getFieldType('quantity')->toVerbal($rec->quantityToProduce);
     	
     	if($fields['-list']){
     		$row->productId = cat_Products::getHyperlink($rec->productId, TRUE);
+    		
+    		$row->quantityToProduce = "<span style='float:right'>{$row->quantityToProduce}</span>";
+    		$row->quantityNotStored = "<span style='float:right'>{$row->quantityNotStored}</span>";
     	}
     	 
     	if($rec->saleId){
     		$row->saleId = sales_Sales::getlink($rec->saleId, 0);
     	}
     	
-    	if(empty($rec->quantityProduced)){
-    		$row->quantityProduced = "<b class='quiet'>{$row->quantityProduced}</b>";
+    	foreach (array('quantityProduced', 'quantityToProduce', 'quantityFromTasks', 'quantityNotStored') as $fld){
+    		if(empty($rec->{$fld})){
+    			$row->{$fld} = "<b class='quiet'>{$row->{$fld}}</b>";
+    		}
     	}
     	
     	if($fields['-single']){
+    		$row->quantity .= " {$shortUom}";
+    		$row->quantityProduced .=  " {$shortUom}";
+    		$row->quantityFromTasks .=  " {$shortUom}";
+    		$row->quantityNotStored .=  " {$shortUom}";
+    		$row->quantityToProduce .=  " {$shortUom}";
+    		
+    		if(isset($rec->deliveryPlace)){
+    			$row->deliveryPlace = crm_Locations::getHyperlink($rec->deliveryPlace, TRUE);
+    		}
+    		
     		if($sBomId = cat_Products::getLastActiveBom($rec->productId, 'sales')->id){
     			$row->sBomId = cat_Boms::getLink($sBomId, 0);
     		}

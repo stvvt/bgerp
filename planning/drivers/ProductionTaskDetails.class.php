@@ -50,7 +50,7 @@ class planning_drivers_ProductionTaskDetails extends tasks_TaskDetails
     /**
      * Полета, които ще се показват в листов изглед
      */
-    public $listFields = 'RowNumb=Пулт,type=Операция,serial,taskProductId,quantity,weight,employees,fixedAsset,modified=Модифицирано';
+    public $listFields = 'RowNumb=Пулт,type=Операция,serial,taskProductId,packagingId=Мярка,quantity,weight,employees,fixedAsset,modified=Модифицирано';
     
 
     /**
@@ -77,12 +77,12 @@ class planning_drivers_ProductionTaskDetails extends tasks_TaskDetails
     public function description()
     {
     	$this->FLD("taskId", 'key(mvc=planning_Tasks)', 'input=hidden,silent,mandatory,caption=Задача');
-    	$this->FLD('taskProductId', 'key(mvc=planning_drivers_ProductionTaskProducts,select=productId,allowEmpty)', 'caption=Артикул,smartCenter,mandatory');
+    	$this->FLD('taskProductId', 'key(mvc=planning_drivers_ProductionTaskProducts,select=productId,allowEmpty)', 'caption=Артикул,mandatory,silent,refreshForm');
     	$this->FLD('type', 'enum(input=Влагане,product=Произвеждане,waste=Отпадък)', 'input=hidden,silent,smartCenter');
     	$this->FLD('serial', 'varchar(32)', 'caption=С. номер,smartCenter');
     	$this->FLD('quantity', 'double', 'caption=К-во,mandatory');
     	$this->FLD('weight', 'cat_type_Weight', 'caption=Тегло');
-    	$this->FLD('employees', 'keylist(mvc=planning_HumanResources,select=code,makeLinks)', 'caption=Работници,smartCenter');
+    	$this->FLD('employees', 'keylist(mvc=planning_HumanResources,select=code,makeLinks)', 'caption=Работници,smartCenter,tdClass=nowrap');
     	$this->FLD('fixedAsset', 'key(mvc=planning_AssetResources,select=code)', 'caption=Машина,input=none,smartCenter');
     	$this->FLD('notes', 'richtext(rows=2)', 'caption=Забележки');
     	$this->FLD('state', 'enum(active=Активирано,rejected=Оттеглен)', 'caption=Състояние,input=none,notNull');
@@ -120,14 +120,26 @@ class planning_drivers_ProductionTaskDetails extends tasks_TaskDetails
     		$form->setField('fixedAsset', 'input');
     	}
     	
-    	$groupTitle = $data->singleTitle = ($rec->type == 'input') ? 'За влагане' : (($rec->type == 'waste') ? 'Отпадъци' : 'За произвеждане');
-    	$productOptions = planning_drivers_ProductionTaskProducts::getOptionsByType($rec->taskId, $rec->type);
-    	
-    	if(count($productOptions) != 1){
-    		$productOptions = array('x' => (object)array('group' => TRUE, 'title' => tr($groupTitle))) + $productOptions;
+    	if($rec->type != 'product'){
+    		$productOptions = planning_drivers_ProductionTaskProducts::getOptionsByType($rec->taskId, $rec->type);
+    		$form->setOptions('taskProductId', $productOptions);
+    		if(count($productOptions) == 1 && $form->cmd != 'refresh'){
+    			$form->setDefault('taskProductId', key($productOptions));
+    		}
+    	} else {
+    		$form->FNC('productId', 'int', 'caption=Артикул,input,before=serial');
+    		$form->setOptions('productId', array($data->masterRec->productId = cat_Products::getTitleById($data->masterRec->productId, FALSE)));
+    		$form->setField('taskProductId', 'input=none');
+    		$unit = cat_UoM::getShortName($data->masterRec->packagingId);
+    		$form->setField('quantity', "unit={$unit}");
     	}
     	
-    	$form->setOptions('taskProductId', array('' => '') + $productOptions);
+    	// Добавяме мярката
+    	if(isset($rec->taskProductId)){
+    		$unit = planning_drivers_ProductionTaskProducts::fetchField($rec->taskProductId, 'packagingId');
+    		$unit = cat_UoM::getShortName($unit);
+    		$form->setField('quantity', "unit={$unit}");
+    	}
     }
     
 
@@ -188,7 +200,7 @@ class planning_drivers_ProductionTaskDetails extends tasks_TaskDetails
     		}
     	}
     	 
-    	$row->modified = "<div class='centered'>" . $mvc->getFieldType('modifiedOn')->toVerbal($rec->modifiedOn);
+    	$row->modified = "<div class='nowrap'>" . $mvc->getFieldType('modifiedOn')->toVerbal($rec->modifiedOn);
     	$row->modified .= " " . tr('от') . " " . $row->modifiedBy . "</div>";
     	 
     	if(isset($rec->serial)){
@@ -201,10 +213,14 @@ class planning_drivers_ProductionTaskDetails extends tasks_TaskDetails
     		$row->ROW_ATTR['title'] = tr('Оттеглено от') . " " . core_Users::getVerbal($rec->modifiedBy, 'nick');
     	}
     	
-    	if($rec->taskProductId){
-    		$productId = planning_drivers_ProductionTaskProducts::fetchField($rec->taskProductId, 'productId');
+    	$productId = ($rec->taskProductId) ? planning_drivers_ProductionTaskProducts::fetchField($rec->taskProductId, 'productId') : planning_Tasks::fetch($rec->taskId)->productId;
+    	if($productId){
     		$row->taskProductId = cat_Products::getShortHyperlink($productId);
+    		$row->taskProductId = "<div class='nowrap'>" . $row->taskProductId . "</div>";
     	}
+    	
+    	$measureId = ($rec->taskProductId) ? planning_drivers_ProductionTaskProducts::fetchField($rec->taskProductId, 'packagingId') : planning_Tasks::fetch($rec->taskId)->packagingId;
+    	$row->packagingId = cat_UoM::getShortName($measureId);
     	
     	if(!empty($rec->notes)){
     		$notes = $mvc->getFieldType('notes')->toVerbal($rec->notes);
@@ -222,7 +238,9 @@ class planning_drivers_ProductionTaskDetails extends tasks_TaskDetails
      */
     public static function on_AfterSave(core_Mvc $mvc, &$id, $rec)
     {
-    	planning_drivers_ProductionTaskProducts::updateRealQuantity($rec->taskProductId);
+    	if(isset($rec->taskProductId)){
+    		planning_drivers_ProductionTaskProducts::updateRealQuantity($rec->taskProductId);
+    	}
     }
     
     
@@ -287,7 +305,7 @@ class planning_drivers_ProductionTaskDetails extends tasks_TaskDetails
     	}
     	
     	// Трябва да има поне един артикул възможен за добавяне
-    	if($action == 'add' && isset($rec->type)){
+    	if($action == 'add' && isset($rec->type) && $rec->type != 'product'){
     		if($requiredRoles != 'no_one'){
     			$pOptions = planning_drivers_ProductionTaskProducts::getOptionsByType($rec->taskId, $rec->type);
     			if(!count($pOptions)){
@@ -304,6 +322,6 @@ class planning_drivers_ProductionTaskDetails extends tasks_TaskDetails
     protected static function on_BeforePrepareEditTitle($mvc, &$res, $data)
     {
     	$rec = &$data->form->rec;
-    	$data->singleTitle = ($rec->type == 'input') ? 'вложен артикул' : (($rec->type == 'waste') ? 'отпадък' : 'произведен артикул');
+    	$data->singleTitle = ($rec->type == 'input') ? 'влагане' : (($rec->type == 'waste') ? 'отпадък' : 'произвеждане');
     }
 }

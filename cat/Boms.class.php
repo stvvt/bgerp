@@ -154,7 +154,7 @@ class cat_Boms extends core_Master
      */
     const PRICE_COEFFICIENT = 0.5;
     
-    public $preventCache = TRUE;
+    
     /**
      * Описание на модела
      */
@@ -336,6 +336,13 @@ class cat_Boms extends core_Master
     		if($idCount){
     			core_Statuses::newStatus("|Затворени са|* {$idCount} |рецепти|*");
     		}
+    	}
+    	
+    	//  При активацията на рецептата променяме датата на модифициране на артикула
+    	$type = (isset($rec->type)) ? $rec->type : $mvc->fetchField($rec->id, 'type');
+    	if($type == 'sales' && $rec->state != 'draft'){
+    		$productId = (isset($rec->productId)) ? $rec->productId : $mvc->fetchField($rec->id, 'productId');
+    		cat_Products::touchRec($productId);
     	}
     }
     
@@ -1330,22 +1337,23 @@ class cat_Boms extends core_Master
      * 
      * @param mixed $id - ид на рецепта
      * @param double $quantity - количество
-     * @return array  - масив със задачи за производство за генерирането на всеки етап
+     * @return array  $tasks - масив със задачи за производство за генерирането на всеки етап
      */
     public static function getTasksFromBom($id, $quantity = 1)
     {
     	expect($rec = self::fetchRec($id));
     	$tasks = array();
-    	$pName = cat_Products::getVerbal($rec->productId, 'name');
+    	$pName = cat_Products::getTitleById($rec->productId, FALSE);
     	
     	// За основния артикул подготвяме задача
     	// В която самия той е за произвеждане
-    	$tasks = array(1 => (object)array('driver'   => planning_drivers_ProductionTask::getClassId(),
-    									  'title'    => $pName,
-    									  'quantity' => $quantity,
-    									  'products' => array('production' => array(array('productId' => $rec->productId, 'packagingId' => cat_Products::fetchField($rec->productId, 'measureId'), 'packQuantity' => 1, 'quantityInPack' => 1)),
-    										 				  'input'    => array(),
-    										 				  'waste'    => array())));
+    	$tasks = array(1 => (object)array('driver'          => planning_drivers_ProductionTask::getClassId(),
+    									  'title'           => $pName,
+    									  'plannedQuantity' => $quantity,
+    									  'quantityInPack'  => 1,
+    									  'packagingId'     => cat_Products::fetchField($rec->productId, 'measureId'),
+    									  'productId'       => $rec->productId,
+    									  'products'        => array('input'    => array(),'waste'    => array())));
     	 
     	// Намираме неговите деца от първо ниво те ще бъдат артикулите за влагане/отпадък
     	$dQuery = cat_BomDetails::getQuery();
@@ -1392,12 +1400,12 @@ class cat_Boms extends core_Master
     		
     		// Подготвяме задачата за етапа, с него за производим
     		$arr = (object)array('driver'   => planning_drivers_ProductionTask::getClassId(),
-    							 'title'    => $pName . " / " . cat_Products::getVerbal($dRec->resourceId, 'name'),
-    							 'quantity' => $quantityP,
-    							 'products' => array(
-		    						'production' => array(array('productId' => $dRec->resourceId, 'packagingId' => $dRec->packagingId, 'packQuantity' => @($quantityP / $quantityP), 'quantityInPack' => $dRec->quantityInPack)),
-		    						'input'      => array(),
-		    						'waste'      => array()));
+    							 'title'    => $pName . " / " . cat_Products::getTitleById($dRec->resourceId, FALSE),
+    							 'plannedQuantity' => $quantityP,
+    							 'productId' => $dRec->resourceId,
+    							 'packagingId' => $dRec->packagingId,
+    							 'quantityInPack' => $dRec->quantityInPack,
+    							 'products' => array('input' => array(), 'waste' => array()));
     
     		// Добавяме директните наследници на етапа като материали за влагане/отпадък
     		while($cRec = $query2->fetch()){
@@ -1405,7 +1413,6 @@ class cat_Boms extends core_Master
     			if($quantityS == cat_BomDetails::CALC_ERROR){
     				$quantityS = 0;
     			}
-    			
     			
     			$quantityS = $quantityS;
     			
