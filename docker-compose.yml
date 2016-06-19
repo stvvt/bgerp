@@ -1,0 +1,18 @@
+version: '2'
+
+services:
+
+    bgerp:
+        image: stvvt/bgerp
+        volumes:
+            - uploads:/app/uploads
+            - data:/var/lib/mysql
+            - mysql:/etc/mysql
+        
+volumes:
+    uploads:
+        driver: local
+    data:
+        driver: local
+    mysql:
+        driver: local
